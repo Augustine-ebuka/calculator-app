@@ -1,0 +1,64 @@
+*,*::before,*::after{
+    box-sizing: border-box;
+    padding: 0;
+    margin-top: 0;
+}
+body{
+    font-weight: normal;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    font-size: 2rem;
+    background:linear-gradient(to right, #00AAFF, #00FF6c)
+}
+.cal-grid{
+    display: grid;
+    grid-template-columns: repeat(4,100px);
+    grid-template-rows: minmax(100px,auto)repeat(6,120px);
+    justify-content: center;
+    align-content: center;
+    min-height: 100vh;
+
+}
+.cal-grid > button{
+    border: 1px solid white;
+    background-color: rgba(256, 256, 256, .75);
+    cursor: pointer;
+    font-size: 2rem;
+    outline: none;
+    border-radius: 2px;
+}
+.cal-grid > button:hover{
+    background-color: rgba(256, 256, 256, .9);
+}
+.span-two{
+    grid-column: span 2;
+}
+.span-two:nth-child(){
+    grid-column: span;
+    background-color: black;
+}
+
+.output{
+    display: flex;
+    background-color: rgba(0, 0, 0, 0.75);
+    grid-column: 1 / -1;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-direction: column;
+    word-wrap: break-word;
+    word-break: break-all;
+
+}
+.output .prev{
+    color:rgba(256, 256, 256, .75);
+    font-size: 1.5rem;
+    padding: 10px;
+}
+.output .curr{
+    color:white;
+    font-size: 2.5rem;
+    padding: 10px;
+}
+#equals{
+    background-color: black;
+    color: white;
+}
