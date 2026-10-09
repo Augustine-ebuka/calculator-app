@@ -18,3 +18,12 @@ The other methods of the Calculator class perform various operations on the oper
 The updateDisplay method is used to update the display elements in the DOM with the current and previous operands, as well as the current operator. It uses the getDisplayNumber method to format the operands for display, and the innerText property to set the text of the display elements.
 
 The Calculator class is used in the rest of the code you provided to create a calculator that can.
+
+## Hoop Shot (basketball/)
+A browser basketball shooting game. Open `basketball/index.html` in any browser, no build step.
+
+- Press on the court and pull back like a slingshot, then let go to shoot. A longer pull means more power.
+- The dotted aim guide shows the arc. Switch it to Short or Off as you get better.
+- After each miss the coach tells you what went wrong (too flat, short, long, rimmed out) and you stay on the same spot to adjust.
+- Threes count 3 points and a swish (no rim, no backboard) adds a bonus point.
+- Try the 60-second challenge once you're comfortable.
