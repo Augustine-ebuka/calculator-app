@@ -60,6 +60,7 @@ button { font-family: var(--body); }
 .btn:hover { border-color: var(--muted); }
 .btn:focus-visible, .views button:focus-visible { outline: 2px solid var(--led); outline-offset: 2px; }
 .btn b { color: var(--led); font-weight: 700; }
+a.btn { text-decoration: none; }
 
 .views {
   position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
@@ -134,6 +135,7 @@ button { font-family: var(--body); }
   </div>
 
   <div class="controls">
+    <a class="btn" href="../">&larr; Home</a>
     <button class="btn" id="guideBtn" type="button">Aim guide: <b>Full</b></button>
     <button class="btn" id="soundBtn" type="button">Sound: <b>On</b></button>
     <button class="btn" id="modeBtn" type="button">60s challenge</button>
