@@ -3,6 +3,7 @@ The home page (`index.html`) is the Game Room: it links to the calculator and th
 
 - `calculator/` holds the calculator: index.html, style.css and script.js
 - `basketball/` holds Hoop Shot 3D
+- `forest/` holds Forest Range
 
 ## Calculator (calculator/)
 The calculator consists of three files: index.html, style.css and script.js
@@ -35,3 +36,13 @@ A 3D basketball shooting game built with three.js. Open `basketball/index.html` 
 - The dotted aim guide shows the arc. Switch it to Short or Off as you get better.
 - After a miss the coach tells you what went wrong (short, long, left, right, rimmed out), and you stay on the same spot to adjust.
 - Threes count 3 points and a swish adds a bonus point. Try the 60-second challenge once you're comfortable.
+
+## Forest Range (forest/)
+A first-person 3D target shooting game in a forest clearing, built with three.js. It teaches the basics of long-range shooting.
+
+- **Practice range:** paper targets at 25, 50, 100, 200 and 300 m. The rifle is zeroed at 100 m, so further targets need you to aim higher.
+- **Scope:** 4×, 8× and 12× zoom with a mil-dot reticle (1 dot = 1 mil = 10 cm at 100 m). The rangefinder shows the distance to whatever is under the cross.
+- **Coach:** after each shot it tells you how far off you were and how many dots to hold over, for example "52 cm low, hold 2.6 dots higher". The hit card shows your group on the target.
+- **Real effects:** bullet drop, wind drift (toggle Wind), breathing sway (hold Shift or Breath to steady it), recoil, a 5-round magazine, and far hits you hear a moment later.
+- **Hunt mode:** 90 seconds of deer, boar and rabbit targets and steel gongs popping up from 35 to 260 m. Vital-zone hits score more, and moving targets score 1.5×.
+- **Controls:** drag to aim, click/tap or Space to fire, mouse wheel or Z for the scope, Shift to hold breath, R to reload, 1–5 to pick a target, and arrow keys to nudge aim by a quarter mil.

@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Forest Range</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Layout: first-person 3D forest; scoreboard top centre, settings top right, lane picker and zoom bottom centre,
+   coach card + hit card bottom left, fire/breath/reload buttons bottom right on touch screens. */
+:root {
+  --panel: rgba(18, 26, 18, 0.84);
+  --line: #34452f;
+  --chalk: #f1ede4;
+  --muted: #a9b59c;
+  --blaze: #ff7a1a;       /* hunter orange */
+  --good: #8fd16b;
+  --bad: #ff6b5a;
+  --display: "Anton", "Impact", "Arial Narrow", sans-serif;
+  --body: "Barlow Condensed", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: #1b2418; color: var(--chalk); font-family: var(--body); font-size: 16px;
+  overflow: hidden; -webkit-user-select: none; user-select: none; touch-action: none;
+}
+.app { position: relative; height: 100%; }
+#gl, #fx { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#gl { cursor: crosshair; }
+#fx { pointer-events: none; }
+
+.board {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 2px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px;
+  max-width: calc(100% - 32px);
+}
+.cell { display: grid; justify-items: center; padding: 2px 12px; min-width: 0; }
+.cell + .cell { border-left: 1px solid var(--line); }
+.lbl { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.num { font-family: var(--display); font-size: 25px; line-height: 1.1; color: var(--blaze); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.num.plain { color: var(--chalk); }
+
+.controls { position: absolute; top: 10px; right: 16px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.btn {
+  font: 600 13px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--chalk);
+  background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; cursor: pointer; text-decoration: none;
+}
+.btn:hover { border-color: var(--muted); }
+.btn b { color: var(--blaze); }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline-offset: 2px; }
+
+.dock { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.seg { display: flex; align-items: center; gap: 2px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px; }
+.seg .lbl { padding: 0 8px 0 6px; }
+.seg button {
+  font: 600 14px/1 var(--body); letter-spacing: .05em; color: var(--muted); background: transparent; border: 0;
+  border-radius: 4px; padding: 8px 10px; cursor: pointer; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.seg button[aria-pressed="true"] { background: var(--blaze); color: #1d0e02; }
+
+.left { position: absolute; left: 16px; bottom: 16px; display: grid; gap: 8px; width: min(340px, calc(50% - 250px)); min-width: 230px; }
+.coach { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; font-size: 17px; line-height: 1.3; }
+.coach .tag { display: block; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--blaze); font-weight: 700; margin-bottom: 2px; }
+.coach.good .tag { color: var(--good); }
+.coach.bad .tag { color: var(--bad); }
+.card { display: flex; gap: 10px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+#hitCard { width: 96px; height: 96px; flex: none; }
+.card .lbl { display: block; }
+.card .txt { font-size: 15px; line-height: 1.3; color: var(--muted); }
+
+.touch { position: absolute; right: 16px; bottom: 16px; display: none; flex-direction: column; gap: 10px; align-items: flex-end; }
+.round { width: 64px; height: 64px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--chalk);
+  font: 700 13px/1 var(--body); letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.round.fire { width: 84px; height: 84px; background: var(--blaze); color: #1d0e02; font-size: 16px; border: 0; }
+.round.held { background: var(--good); color: #102008; }
+@media (pointer: coarse) { .touch { display: flex; } .keys { display: none; } }
+
+.keys { position: absolute; right: 16px; bottom: 16px; color: var(--muted); font-size: 14px; text-align: right; line-height: 1.5; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; }
+.keys b { color: var(--chalk); font-weight: 600; }
+
+.pop { position: absolute; transform: translate(-50%, -50%); font-family: var(--display); font-size: 26px; pointer-events: none;
+  text-shadow: 0 2px 10px rgba(0,0,0,.7); animation: rise 1.2s ease-out forwards; white-space: nowrap; }
+@keyframes rise { from { opacity: 1; transform: translate(-50%, -50%); } to { opacity: 0; transform: translate(-50%, -150%); } }
+@media (prefers-reduced-motion: reduce) { .pop { animation-timing-function: steps(1, end); } }
+
+.overlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(10,16,10,.78); padding: 16px; }
+.endcard { text-align: center; max-width: 380px; display: grid; gap: 10px; }
+.endcard h2 { font-family: var(--display); font-weight: 400; font-size: 44px; margin: 0; }
+.endcard p { margin: 0; color: var(--muted); font-size: 18px; }
+.endcard .big { font-family: var(--display); font-size: 72px; color: var(--blaze); line-height: 1; }
+.endcard .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.endcard button { font: 700 18px/1 var(--body); letter-spacing: .1em; text-transform: uppercase; background: var(--blaze); color: #1d0e02; border: 0; border-radius: 4px; padding: 12px 22px; cursor: pointer; }
+.endcard button.ghost { background: transparent; color: var(--chalk); border: 1px solid var(--line); }
+
+@media (max-width: 1000px) {
+  .board { left: 16px; transform: none; }
+  .cell { padding: 2px 6px; }
+  .num { font-size: 18px; }
+  .lbl { font-size: 9px; }
+  .dock { top: 64px; bottom: auto; left: 16px; right: 16px; transform: none; align-items: stretch; }
+  .seg { overflow-x: auto; }
+  .seg .lbl { display: none; }
+  .seg button { flex: 1; padding: 7px 4px; font-size: 13px; }
+  .controls { top: 158px; flex-direction: row; flex-wrap: wrap; justify-content: flex-end; left: 16px; }
+  .controls .btn { padding: 7px 8px; font-size: 12px; }
+  .keys { display: none; }
+  .left { width: auto; min-width: 0; right: 120px; }
+  .coach { font-size: 15px; }
+  #hitCard { width: 72px; height: 72px; }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <canvas id="gl" aria-label="First-person forest shooting range. Drag to aim, tap or press Space to fire."></canvas>
+  <canvas id="fx"></canvas>
+
+  <div class="board" role="status">
+    <div class="cell"><span class="lbl">Points</span><span class="num" id="score">0</span></div>
+    <div class="cell"><span class="lbl">Hits</span><span class="num" id="hits">0/0</span></div>
+    <div class="cell"><span class="lbl">Ammo</span><span class="num plain" id="ammo">5/5</span></div>
+    <div class="cell"><span class="lbl">Wind</span><span class="num plain" id="wind">Calm</span></div>
+    <div class="cell" id="clockCell" hidden><span class="lbl">Clock</span><span class="num plain" id="clock">90</span></div>
+  </div>
+
+  <div class="controls">
+    <a class="btn" href="../">&larr; Home</a>
+    <button class="btn" id="modeBtn" type="button">Start hunt</button>
+    <button class="btn" id="windBtn" type="button">Wind: <b>Off</b></button>
+    <button class="btn" id="soundBtn" type="button">Sound: <b>On</b></button>
+  </div>
+
+  <div class="dock">
+    <div class="seg" id="lanes" role="group" aria-label="Target distance">
+      <span class="lbl">Target</span>
+      <button type="button" data-lane="0" aria-pressed="false">25 m</button>
+      <button type="button" data-lane="1" aria-pressed="false">50 m</button>
+      <button type="button" data-lane="2" aria-pressed="true">100 m</button>
+      <button type="button" data-lane="3" aria-pressed="false">200 m</button>
+      <button type="button" data-lane="4" aria-pressed="false">300 m</button>
+    </div>
+    <div class="seg" id="zooms" role="group" aria-label="Scope zoom">
+      <span class="lbl">Scope</span>
+      <button type="button" data-zoom="1" aria-pressed="true">Off</button>
+      <button type="button" data-zoom="4" aria-pressed="false">4&times;</button>
+      <button type="button" data-zoom="8" aria-pressed="false">8&times;</button>
+      <button type="button" data-zoom="12" aria-pressed="false">12&times;</button>
+    </div>
+  </div>
+
+  <div class="left">
+    <div class="card" id="cardWrap">
+      <canvas id="hitCard" width="192" height="192"></canvas>
+      <div><span class="lbl" id="cardTitle">100 m target</span><span class="txt" id="cardText">Your hits show up here.</span></div>
+    </div>
+    <div class="coach" id="coach">
+      <span class="tag" id="coachTag">How to shoot</span>
+      <span id="coachText">Drag to aim and tap to fire. Turn on the scope, put the cross on the bullseye, and hold your breath to steady it.</span>
+    </div>
+  </div>
+
+  <div class="keys"><b>Drag</b> aim · <b>Click/Space</b> fire · <b>Wheel/Z</b> scope<br><b>Shift</b> hold breath · <b>R</b> reload · <b>1–5</b> target</div>
+  <div class="touch">
+    <button class="round" id="reloadBtn" type="button">Reload</button>
+    <button class="round" id="breathBtn" type="button">Breath</button>
+    <button class="round fire" id="fireBtn" type="button">Fire</button>
+  </div>
+
+  <div class="overlay" id="overlay" hidden>
+    <div class="endcard">
+      <h2>Hunt over</h2>
+      <div class="big" id="ovScore">0</div>
+      <p id="ovText"></p>
+      <div class="row">
+        <button id="againBtn" type="button">Hunt again</button>
+        <button id="practiceBtn" class="ghost" type="button">Practice range</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  if (!window.THREE) {
+    $('coachTag').textContent = 'Could not load 3D engine';
+    $('coachText').textContent = 'The game needs the three.js library from cdn.jsdelivr.net. Check your connection and reload.';
+    return;
+  }
+  const V = THREE.Vector3;
+  if (THREE.ColorManagement) THREE.ColorManagement.legacyMode = false; // treat hex colours as sRGB so they render true
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const rand = (a, b) => a + Math.random() * (b - a);
+
+  // ---------- ballistics (game-tuned, metres and seconds) ----------
+  const MUZZLE_V = 420, G = 9.8, WIND_K = 0.6, ZERO = 100, SIGHT_H = 0.045; // barrel sits 4.5 cm under the scope
+  const ZERO_ANGLE = Math.atan((SIGHT_H + 0.5 * G * (ZERO / MUZZLE_V) ** 2) / ZERO); // sights hit dead on at 100 m
+  const EYE = new V(0, 1.45, 0);
+  const MAG = 5;
+
+  // ---------- renderer / scene ----------
+  const gl = $('gl'), fx = $('fx'), fctx = fx.getContext('2d');
+  const renderer = new THREE.WebGLRenderer({ canvas: gl, antialias: true });
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.2;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const scene = new THREE.Scene();
+  const FOG = 0xbfd0c2;
+  scene.fog = new THREE.Fog(FOG, 160, 1300);
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 2500);
+  camera.rotation.order = 'YXZ'; camera.position.copy(EYE);
+  scene.add(camera);
+
+  scene.add(new THREE.HemisphereLight(0xd8ecff, 0x3d4a26, 0.75));
+  const sun = new THREE.DirectionalLight(0xfff0d0, 1.25);
+  sun.position.set(-50, 90, 30); sun.target.position.set(0, 0, -40);
+  sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 10, far: 250 });
+  sun.shadow.bias = -0.0005;
+  scene.add(sun, sun.target);
+
+  function canvasTex(w, h, paint) {
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    paint(c.getContext('2d'), w, h);
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding;
+    t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    return t;
+  }
+  const std = (color, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.85, metalness: 0 }, o));
+  function mesh(geo, mat, x = 0, y = 0, z = 0, parent = scene) {
+    const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z);
+    m.castShadow = true; m.receiveShadow = true; parent.add(m); return m;
+  }
+
+  // sky dome with a vertical gradient
+  {
+    const geo = new THREE.SphereGeometry(2000, 32, 16), cols = [], top = new THREE.Color(0x5f97d6), hor = new THREE.Color(FOG);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) { const t = clamp(pos.getY(i) / 900, 0, 1); const c = hor.clone().lerp(top, Math.pow(t, 0.6)); cols.push(c.r, c.g, c.b); }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+    scene.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })));
+    const sunTex = canvasTex(128, 128, (g, w) => { const r = g.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(255,250,230,1)'); r.addColorStop(.25, 'rgba(255,240,200,.8)'); r.addColorStop(1, 'rgba(255,240,200,0)'); g.fillStyle = r; g.fillRect(0, 0, w, w); });
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: sunTex, fog: false, depthWrite: false, transparent: true }));
+    s.position.set(-900, 1100, -1300); s.scale.set(380, 380, 1); scene.add(s);
+  }
+  // distant hills
+  for (let i = 0; i < 14; i++) {
+    const a = -Math.PI * 0.95 + i / 13 * Math.PI * 0.9 - Math.PI / 2 + Math.PI / 2, r = rand(1100, 1500);
+    const h = rand(160, 320);
+    const m = new THREE.Mesh(new THREE.ConeGeometry(rand(260, 420), h, 7), std(0x5d7a63, { flatShading: true }));
+    m.position.set(Math.sin(a - Math.PI / 2) * r, h / 2 - 10, -Math.abs(Math.cos(a - Math.PI / 2)) * r - 300);
+    scene.add(m);
+  }
+
+  // ground
+  const grassTex = canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#5c7a35'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 9000; i++) {
+      g.fillStyle = `hsl(${rand(70, 100)}, ${rand(30, 50)}%, ${rand(22, 42)}%)`;
+      g.fillRect(Math.random() * w, Math.random() * h, 1, rand(2, 5));
+    }
+  });
+  grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping; grassTex.repeat.set(900, 900);
+  const ground = mesh(new THREE.PlaneGeometry(4000, 4000), std(0xffffff, { map: grassTex }), 0, 0, 0);
+  ground.rotation.x = -Math.PI / 2; ground.castShadow = false;
+
+  // clearing where the lanes are; trees only outside it
+  const inClearing = (x, z) => z < 6 && z > -345 && Math.abs(x) < 14 + -z * 0.42;
+  const berm = mesh(new THREE.BoxGeometry(260, 9, 14), std(0x6b5236), 0, 3.5, -335);
+  berm.userData.kind = 'berm';
+
+  {
+    const N = 1100, trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.22, 0.34, 4, 7), std(0x4a3524), N);
+    const foliage = [[2.6, 5, 5], [2.0, 4.2, 7.3], [1.3, 3.4, 9.3]].map(([r, h, y]) => {
+      const geo = new THREE.ConeGeometry(r, h, 8); geo.translate(0, y, 0);
+      return new THREE.InstancedMesh(geo, std(0xffffff, { roughness: 0.95 }), N);
+    });
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new V(), p = new V(), c = new THREE.Color();
+    let n = 0;
+    while (n < N) {
+      const a = rand(0, Math.PI * 2), r = Math.sqrt(Math.random()) * 620;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r - 120;
+      if (inClearing(x, z) || Math.hypot(x, z) < 10) continue;
+      const k = rand(0.75, 1.7);
+      q.setFromAxisAngle(new V(0, 1, 0), rand(0, 6.28));
+      m.compose(p.set(x, 0, z), q, s.set(k, k * rand(0.9, 1.25), k));
+      trunk.setMatrixAt(n, m);
+      c.setHSL(rand(0.27, 0.36), rand(0.35, 0.55), rand(0.16, 0.26));
+      foliage.forEach(f => { f.setMatrixAt(n, m); f.setColorAt(n, c); });
+      n++;
+    }
+    [trunk, ...foliage].forEach(im => { im.castShadow = true; im.receiveShadow = true; scene.add(im); });
+  }
+  // bushes and rocks inside the clearing
+  const laneX = [-5, -3, 0, 7, 15], laneD = [25, 50, 100, 200, 300];
+  {
+    const bushMat = std(0x3b5620, { flatShading: true }), rockMat = std(0x8a8d86, { flatShading: true });
+    for (let i = 0; i < 140; i++) {
+      const z = -rand(18, 330), w = 14 + -z * 0.42, x = rand(-w, w);
+      if (laneD.some((d, j) => Math.abs(z + d) < 6 && Math.abs(x - laneX[j]) < 4)) continue;
+      const rock = Math.random() < 0.2;
+      const b = mesh(new THREE.DodecahedronGeometry(rock ? rand(0.4, 1.1) : rand(0.6, 1.5), 0), rock ? rockMat : bushMat, x, rock ? 0.2 : 0.5, z);
+      b.scale.y = rock ? 0.6 : 0.75; b.rotation.y = rand(0, 6);
+    }
+  }
+  // shooting bench in front of you
+  {
+    const wood = std(0x8a6239);
+    mesh(new THREE.BoxGeometry(1.5, 0.07, 0.75), wood, 0.1, 1.0, -0.75);
+    for (const [x, z] of [[-0.55, -0.45], [0.75, -0.45], [-0.55, -1.05], [0.75, -1.05]]) mesh(new THREE.BoxGeometry(0.07, 1.0, 0.07), wood, x, 0.5, z);
+    mesh(new THREE.BoxGeometry(0.34, 0.14, 0.24), std(0x6e6a45), 0.18, 1.1, -0.95);   // sandbag
+  }
+  function signTex(text) {
+    return canvasTex(256, 128, (g, w, h) => {
+      g.fillStyle = '#f4efe2'; g.fillRect(0, 0, w, h); g.strokeStyle = '#2b2b2b'; g.lineWidth = 8; g.strokeRect(4, 4, w - 8, h - 8);
+      g.fillStyle = '#1e1e1e'; g.font = '84px Anton, Impact, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, w / 2, h / 2 + 4);
+    });
+  }
+
+  // ---------- rifle (first person) ----------
+  const rifle = new THREE.Group(); camera.add(rifle);
+  rifle.position.set(0.2, -0.21, -0.5); rifle.scale.setScalar(0.85);
+  {
+    const wood = std(0x7a4b26, { roughness: 0.55 }), metal = std(0x23262b, { metalness: 0.7, roughness: 0.35 });
+    const cyl = (r1, r2, l) => { const g = new THREE.CylinderGeometry(r1, r2, l, 16); g.rotateX(Math.PI / 2); return g; };
+    mesh(new THREE.BoxGeometry(0.055, 0.075, 0.55), wood, 0, -0.02, 0.06, rifle);
+    mesh(new THREE.BoxGeometry(0.05, 0.13, 0.2), wood, 0, -0.06, 0.27, rifle).rotation.x = 0.2;
+    mesh(new THREE.BoxGeometry(0.045, 0.05, 0.22), metal, 0, 0.03, 0.02, rifle);
+    mesh(cyl(0.011, 0.013, 0.62), metal, 0, 0.035, -0.45, rifle);
+    mesh(cyl(0.02, 0.02, 0.3), metal, 0, 0.1, 0.0, rifle);
+    mesh(cyl(0.03, 0.022, 0.08), metal, 0, 0.1, -0.17, rifle);
+    mesh(cyl(0.026, 0.02, 0.06), metal, 0, 0.1, 0.16, rifle);
+    for (const z of [-0.06, 0.08]) mesh(new THREE.BoxGeometry(0.03, 0.05, 0.02), metal, 0, 0.07, z, rifle);
+    const bolt = mesh(new THREE.SphereGeometry(0.014, 10, 8), metal, -0.05, 0.03, 0.08, rifle);
+    mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.05, 6), metal, -0.03, 0.03, 0.08, rifle).rotation.z = Math.PI / 2;
+    rifle.userData.bolt = bolt;
+  }
+  rifle.traverse(o => { o.castShadow = false; });
+  const flash = new THREE.PointLight(0xffc06a, 0, 6); flash.position.set(0.16, -0.12, -1.1); camera.add(flash);
+
+  // ---------- targets ----------
+  const hittables = [berm];
+  const targets = [];          // paper, gong and animal targets
+  const FACE_TEX = canvasTex(512, 512, (g, w) => {
+    const c = w / 2;
+    g.fillStyle = '#f4efe2'; g.fillRect(0, 0, w, w);
+    for (let ring = 1; ring <= 10; ring++) {
+      const r = c * (11 - ring) / 10;
+      g.beginPath(); g.arc(c, c, r, 0, Math.PI * 2);
+      g.fillStyle = ring >= 7 ? '#151515' : '#f4efe2'; g.fill();
+      g.lineWidth = 2.5; g.strokeStyle = ring >= 7 ? '#f4efe2' : '#151515'; g.stroke();
+    }
+    g.fillStyle = '#ff7a1a'; g.beginPath(); g.arc(c, c, c * 0.05, 0, Math.PI * 2); g.fill();
+    g.font = '22px "Barlow Condensed", sans-serif'; g.textAlign = 'center';
+    for (let ring = 1; ring <= 8; ring++) {
+      const r = c * (10.5 - ring) / 10;
+      g.fillStyle = ring >= 7 ? '#f4efe2' : '#151515';
+      g.fillText(ring, c + r, c + 8); g.fillText(ring, c - r, c + 8);
+    }
+  });
+  const paper = laneD.map((d, i) => {
+    const R = 0.25 * Math.max(1, d / 50);           // bigger faces further out, like a real range
+    const root = new THREE.Group(); root.position.set(laneX[i], 0, -d); scene.add(root);
+    root.rotation.y = Math.atan2(-laneX[i], d);
+    const H = Math.max(1.3, R + 0.7);
+    const post = std(0x6b4a2c);
+    for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.08 * Math.max(1, R * 2), H + R, 0.08 * Math.max(1, R * 2)), post, s * (R + 0.1), (H + R) / 2, -0.05, root);
+    const board = mesh(new THREE.BoxGeometry(2 * R + 0.2, 2 * R + 0.2, 0.04), std(0xc9b48a), 0, H, -0.02, root);
+    const face = mesh(new THREE.PlaneGeometry(2 * R, 2 * R), std(0xffffff, { map: FACE_TEX, roughness: 1 }), 0, H, 0.03, root);
+    face.castShadow = false;
+    const sign = mesh(new THREE.PlaneGeometry(0.9 * Math.max(1, R * 1.5), 0.45 * Math.max(1, R * 1.5)), new THREE.MeshStandardMaterial({ map: signTex(d + ' m') }), 0, 0.45 * Math.max(1, R), 0.06, root);
+    sign.castShadow = false;
+    const t = { type: 'paper', d, R, H, root, face, board, holes: [], lane: i };
+    face.userData = { target: t, kind: 'face' }; board.userData = { target: t, kind: 'board' };
+    hittables.push(face, board);
+    targets.push(t);
+    return t;
+  });
+
+  // animal silhouettes, facing +x, origin at the feet (metres)
+  const SHAPES = {
+    deer: { color: 0x7a4b2a, vital: [0.36, 0.84, 0.14], pts: [[-0.62,0.62],[-0.6,0.02],[-0.52,0.02],[-0.48,0.55],[-0.4,0.55],[-0.38,0.02],[-0.3,0.02],[-0.3,0.6],[0.3,0.6],[0.32,0.02],[0.4,0.02],[0.42,0.55],[0.48,0.55],[0.5,0.02],[0.58,0.02],[0.6,0.7],[0.66,0.95],[0.8,1.25],[0.98,1.3],[1.0,1.38],[0.86,1.48],[0.9,1.62],[0.8,1.52],[0.74,1.62],[0.7,1.46],[0.55,1.12],[0.4,1.05],[-0.55,1.02],[-0.66,1.08],[-0.7,0.98],[-0.66,0.9]] },
+    boar: { color: 0x4a3a30, vital: [0.28, 0.5, 0.11], pts: [[-0.55,0.35],[-0.52,0.02],[-0.44,0.02],[-0.4,0.3],[-0.3,0.3],[-0.28,0.02],[-0.2,0.02],[-0.18,0.28],[0.25,0.28],[0.27,0.02],[0.35,0.02],[0.37,0.28],[0.42,0.28],[0.44,0.02],[0.52,0.02],[0.55,0.35],[0.7,0.4],[0.82,0.4],[0.82,0.52],[0.68,0.62],[0.62,0.8],[0.55,0.68],[0.45,0.8],[0.1,0.84],[-0.3,0.76],[-0.52,0.66],[-0.62,0.64],[-0.58,0.5]] },
+    rabbit: { color: 0x8a755c, vital: [0.02, 0.15, 0.06], pts: [[-0.2,0.0],[0.12,0.0],[0.16,0.06],[0.13,0.12],[0.17,0.2],[0.22,0.23],[0.26,0.27],[0.21,0.33],[0.16,0.34],[0.14,0.52],[0.09,0.5],[0.1,0.35],[0.05,0.3],[-0.1,0.27],[-0.21,0.19],[-0.25,0.1],[-0.24,0.03]] },
+  };
+  const animalGeo = {};
+  for (const k in SHAPES) {
+    const sh = new THREE.Shape(SHAPES[k].pts.map(([x, y]) => new THREE.Vector2(x, y)));
+    const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.05, bevelEnabled: false }); geo.translate(0, 0, -0.025);
+    animalGeo[k] = geo;
+  }
+  const vitalMat = new THREE.MeshBasicMaterial({ color: 0xf4efe2, transparent: true, opacity: 0.55 });
+  function spawnAnimal(kind, d, x, moving) {
+    const S = SHAPES[kind];
+    const root = new THREE.Group(); root.position.set(x, 0, -d); scene.add(root);
+    root.rotation.y = Math.atan2(-x, d);
+    const pivot = new THREE.Group(); root.add(pivot); pivot.rotation.x = -Math.PI / 2; pivot.scale.setScalar(1.25);
+    const flip = new THREE.Group(); pivot.add(flip);
+    const dir = Math.random() < 0.5 ? 1 : -1; flip.scale.x = dir;
+    const body = mesh(animalGeo[kind], std(S.color, { roughness: 0.9 }), 0, 0, 0, flip);
+    for (const z of [0.026, -0.026]) {
+      const ring = new THREE.Mesh(new THREE.RingGeometry(S.vital[2] * 0.82, S.vital[2], 28), vitalMat);
+      ring.position.set(S.vital[0], S.vital[1], z); if (z < 0) ring.rotation.y = Math.PI; flip.add(ring);
+    }
+    const t = { type: 'animal', kind, d, root, pivot, flip, body, dir, moving, speed: moving ? (kind === 'deer' ? 3.2 : kind === 'boar' ? 2.2 : 2.6) : 0,
+                state: 'rise', t: 0, life: rand(5.5, 8), S };
+    body.userData = { target: t, kind: 'animal' };
+    hittables.push(body); targets.push(t);
+    return t;
+  }
+  function spawnGong(d, x) {
+    const root = new THREE.Group(); root.position.set(x, 0, -d); scene.add(root);
+    root.rotation.y = Math.atan2(-x, d);
+    const r = 0.2 * Math.max(1, d / 60), H = 1.2 + r;
+    const steel = std(0x2e3135, { metalness: 0.6, roughness: 0.45 });
+    for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.06, H + r + 0.25, 0.06), steel, s * (r + 0.2), (H + r + 0.25) / 2, 0, root);
+    mesh(new THREE.BoxGeometry(2 * r + 0.46, 0.06, 0.06), steel, 0, H + r + 0.25, 0, root);
+    const swing = new THREE.Group(); swing.position.y = H + r + 0.22; root.add(swing);
+    const plate = mesh(new THREE.CircleGeometry(r, 28), std(0xe8e2d0, { metalness: 0.3, roughness: 0.5, side: THREE.DoubleSide }), 0, -r - 0.05, 0, swing);
+    const t = { type: 'gong', d, r, root, swing, plate, swingV: 0, state: 'up', t: 0, life: rand(9, 13) };
+    plate.userData = { target: t, kind: 'gong' };
+    hittables.push(plate); targets.push(t);
+    return t;
+  }
+  function removeTarget(t) {
+    scene.remove(t.root);
+    const i = targets.indexOf(t); if (i >= 0) targets.splice(i, 1);
+    for (let j = hittables.length - 1; j >= 0; j--) if (hittables[j].userData.target === t) hittables.splice(j, 1);
+  }
+
+  // ---------- state ----------
+  let mode = 'practice', lane = 2, zoom = 1, windOn = false, wind = 0, sound = true;
+  let yaw = 0, pitch = 0, recoil = 0, swayT = 0, breath = 1, holding = false, winded = 0;
+  let ammo = MAG, reloadT = 0, cycleT = 0, clock = 90, spawnT = 0;
+  let stats = { points: 0, hits: 0, shots: 0 };
+  const bullets = [], fxSprites = [];
+
+  function aimAt(t) {
+    const p = new V(laneX[t.lane], t.H, -t.d);
+    const d = p.sub(EYE);
+    yaw = Math.atan2(-d.x, -d.z);
+    pitch = Math.atan2(d.y, Math.hypot(d.x, d.z));
+  }
+  aimAt(paper[lane]);
+
+  // ---------- input ----------
+  let drag = null;
+  const sens = () => THREE.MathUtils.degToRad(camera.fov) / gl.clientHeight;
+  gl.addEventListener('pointerdown', e => {
+    initAudio();
+    if (!$('overlay').hidden) return;
+    drag = { x: e.clientX, y: e.clientY, moved: 0, t: performance.now() };
+    gl.setPointerCapture(e.pointerId);
+  });
+  gl.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy);
+    yaw -= dx * sens(); pitch = clamp(pitch - dy * sens(), -0.35, 0.45);
+  });
+  gl.addEventListener('pointerup', () => {
+    if (drag && drag.moved < 6 && performance.now() - drag.t < 350) fire();
+    drag = null;
+  });
+  gl.addEventListener('pointercancel', () => { drag = null; });
+  gl.addEventListener('wheel', e => { e.preventDefault(); stepZoom(e.deltaY < 0 ? 1 : -1); }, { passive: false });
+  gl.addEventListener('contextmenu', e => e.preventDefault());
+  addEventListener('keydown', e => {
+    if (e.repeat && e.key !== 'Shift') return;
+    const k = e.key.toLowerCase();
+    if (k === ' ') { e.preventDefault(); initAudio(); fire(); }
+    else if (k === 'r') reload();
+    else if (k === 'z') stepZoom(1, true);
+    else if (k === 'shift') holding = true;
+    else if ('12345'.includes(k) && mode === 'practice') setLane(+k - 1);
+    else if (k.startsWith('arrow')) {
+      const s = 0.25 / 1000;   // a quarter mil per press
+      if (k === 'arrowleft') yaw += s; if (k === 'arrowright') yaw -= s;
+      if (k === 'arrowup') pitch += s; if (k === 'arrowdown') pitch -= s;
+      e.preventDefault();
+    }
+  });
+  addEventListener('keyup', e => { if (e.key === 'Shift') holding = false; });
+  $('fireBtn').addEventListener('click', () => { initAudio(); fire(); });
+  $('reloadBtn').addEventListener('click', reload);
+  const bb = $('breathBtn');
+  bb.addEventListener('pointerdown', e => { e.preventDefault(); holding = true; bb.classList.add('held'); });
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) bb.addEventListener(ev, () => { holding = false; bb.classList.remove('held'); });
+
+  const zoomLevels = [1, 4, 8, 12];
+  const zoomBtns = [...document.querySelectorAll('#zooms button')];
+  function setZoom(z) { zoom = z; zoomBtns.forEach(b => b.setAttribute('aria-pressed', +b.dataset.zoom === z)); rifle.visible = z === 1; resize(); }
+  function stepZoom(dir, wrap) {
+    let i = zoomLevels.indexOf(zoom) + dir;
+    if (wrap) i = (i + zoomLevels.length) % zoomLevels.length;
+    setZoom(zoomLevels[clamp(i, 0, zoomLevels.length - 1)]);
+  }
+  zoomBtns.forEach(b => b.addEventListener('click', () => setZoom(+b.dataset.zoom)));
+  const laneBtns = [...document.querySelectorAll('#lanes button')];
+  function setLane(i) {
+    lane = i; laneBtns.forEach(b => b.setAttribute('aria-pressed', +b.dataset.lane === i));
+    aimAt(paper[i]); drawCard();
+    coach('', paper[i].d + ' m target', paper[i].d === ZERO
+      ? 'Your rifle is zeroed at 100 m: put the cross on the centre and it hits the centre.'
+      : paper[i].d < ZERO ? 'Up close the bullet lands a few centimetres above the cross, because the barrel sits under the scope. Aim a touch low.'
+      : 'Past 100 m the bullet drops. Aim above the centre using the dots under the cross.');
+  }
+  laneBtns.forEach(b => b.addEventListener('click', () => setLane(+b.dataset.lane)));
+
+  // ---------- shooting ----------
+  function fire() {
+    if (!$('overlay').hidden) return;
+    if (reloadT > 0 || cycleT > 0) return;
+    if (ammo === 0) { tone('click'); reload(); return; }
+    ammo--; cycleT = 0.85; stats.shots++;
+    const fwd = new V(0, 0, -1).applyQuaternion(camera.quaternion);
+    const up = new V(0, 1, 0).applyQuaternion(camera.quaternion);
+    const dir = fwd.multiplyScalar(Math.cos(ZERO_ANGLE)).addScaledVector(up, Math.sin(ZERO_ANGLE)).normalize();
+    const b = { p: camera.position.clone().addScaledVector(up, -SIGHT_H), v: dir.multiplyScalar(MUZZLE_V), t: 0, lane: mode === 'practice' ? paper[lane] : null, cross: null,
+                sprite: new THREE.Sprite(tracerMat) };
+    b.sprite.position.copy(b.p); scene.add(b.sprite);
+    bullets.push(b);
+    recoil = 0.045; flash.intensity = 3; rifle.position.z = -0.43;
+    tone('shot');
+    if (ammo === 0) setTimeout(reload, 650);
+    hud();
+  }
+  function reload() {
+    if (reloadT > 0 || ammo === MAG) return;
+    reloadT = 1.6; tone('reload'); hud();
+  }
+  const tracerMat = new THREE.SpriteMaterial({ map: canvasTex(64, 64, (g, w) => { const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, 'rgba(255,240,190,1)'); r.addColorStop(1, 'rgba(255,200,90,0)'); g.fillStyle = r; g.fillRect(0, 0, w, w); }),
+    blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
+  const dustMat = new THREE.SpriteMaterial({ map: canvasTex(64, 64, (g, w) => { const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, 'rgba(150,120,80,.9)'); r.addColorStop(1, 'rgba(150,120,80,0)'); g.fillStyle = r; g.fillRect(0, 0, w, w); }),
+    depthWrite: false, transparent: true });
+
+  const ray = new THREE.Raycaster();
+  function stepBullets(dt) {
+    const SUB = 8, h = dt / SUB;
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      const b = bullets[i];
+      let done = false;
+      for (let s = 0; s < SUB && !done; s++) {
+        const prev = b.p.clone();
+        b.v.y -= G * h; b.v.x += wind * WIND_K * h;
+        b.p.addScaledVector(b.v, h); b.t += h;
+        // remember where it crossed the chosen paper target's plane (for coaching on misses)
+        if (b.lane && !b.cross && prev.z > -b.lane.d && b.p.z <= -b.lane.d) {
+          const k = (prev.z + b.lane.d) / (prev.z - b.p.z);
+          b.cross = prev.clone().lerp(b.p, k);
+        }
+        const seg = b.p.clone().sub(prev), len = seg.length();
+        ray.set(prev, seg.divideScalar(len)); ray.far = len;
+        const hit = ray.intersectObjects(hittables, false)[0];
+        if (hit) { impact(b, hit.object, hit.point); done = true; }
+        else if (b.p.y <= 0) { impact(b, null, b.p.clone().setY(0.02)); done = true; }
+        else if (b.t > 2.5) done = true;
+      }
+      b.sprite.position.copy(b.p);
+      const dist = b.p.distanceTo(camera.position); b.sprite.scale.setScalar(0.04 + dist * 0.0035);
+      if (done) { scene.remove(b.sprite); bullets.splice(i, 1); }
+    }
+  }
+  function puff(p, color, size) {
+    const s = new THREE.Sprite(dustMat.clone()); s.material.color.set(color);
+    s.position.copy(p); s.scale.setScalar(size); scene.add(s); fxSprites.push({ s, t: 0, size });
+  }
+  function impact(b, obj, p) {
+    const dist = p.distanceTo(EYE), delay = (b.t + dist / 343) * 1000; // you hear far hits late, like a real range
+    const kind = obj && obj.userData.kind, t = obj && obj.userData.target;
+    if (!obj || kind === 'berm') {
+      puff(p, 0x9a7a52, 0.4 + dist * 0.006);
+      missed(b, p);
+      return;
+    }
+    if (kind === 'board') { puff(p, 0xc9b48a, 0.3 + dist * 0.004); missed(b, p); return; }
+    stats.hits++;
+    if (kind === 'face') {
+      const local = t.root.worldToLocal(p.clone()); local.y -= t.H;
+      const r = Math.hypot(local.x, local.y), ring = clamp(10 - Math.floor(r / t.R * 10), 0, 10);
+      if (ring === 0) { stats.hits--; missed(b, p); return; }
+      const mult = t.d <= 50 ? 1 : t.d <= 100 ? 2 : t.d <= 200 ? 3 : 4;
+      const pts = ring * mult;
+      stats.points += pts;
+      const hole = mesh(new THREE.CircleGeometry(0.03 * t.R / 0.25, 12), new THREE.MeshBasicMaterial({ color: 0xffd23a }), local.x, local.y + t.H, 0.04, t.root);
+      hole.castShadow = false;
+      t.holes.push([local.x / t.R, local.y / t.R]);
+      setTimeout(() => { tone('paper'); }, delay);
+      popup(p, ring === 10 ? 'BULLSEYE +' + pts : ring + ' +' + pts, ring >= 9 ? 'var(--good)' : 'var(--blaze)');
+      adviseOffset(t.d, local.x, local.y, ring);
+      drawCard();
+    } else if (kind === 'gong') {
+      const mult = t.d <= 100 ? 1 : t.d <= 200 ? 2 : 3, pts = 15 * mult;
+      stats.points += pts; t.swingV = 3.5 + Math.random();
+      puff(p, 0xfff0c0, 0.2 + dist * 0.003);
+      setTimeout(() => tone('steel'), delay);
+      popup(p, 'CLANG +' + pts, 'var(--blaze)');
+      coach('good', 'Steel hit', `Ring! That plate is ${Math.round(t.d)} m away. Notice the sound arrives after the hit.`);
+    } else if (kind === 'animal') {
+      const local = t.flip.worldToLocal(p.clone());
+      const [vx, vy, vr] = t.S.vital, vital = Math.hypot(local.x - vx, local.y - vy) < vr;
+      const mult = t.d <= 100 ? 1 : t.d <= 200 ? 2 : 3;
+      const pts = Math.round((vital ? 25 : 10) * mult * (t.moving ? 1.5 : 1));
+      stats.points += pts;
+      t.state = 'fall'; t.t = 0;
+      const i = hittables.indexOf(t.body); if (i >= 0) hittables.splice(i, 1);
+      setTimeout(() => tone('thud'), delay);
+      popup(p, (vital ? 'VITAL +' : 'HIT +') + pts, vital ? 'var(--good)' : 'var(--blaze)');
+      coach('good', vital ? 'Clean vital hit' : 'Body hit', vital
+        ? `Right in the ring at ${Math.round(t.d)} m.${t.moving ? ' Great lead on a moving target.' : ''}`
+        : 'Aim for the pale ring behind the front leg. That zone scores 25 instead of 10.');
+    }
+    hud();
+  }
+  function missed(b, p) {
+    if (b.lane) {
+      const t = b.lane, c = b.cross || p;
+      const local = t.root.worldToLocal(c.clone()); local.y -= t.H;
+      adviseOffset(t.d, local.x, local.y, 0);
+    } else {
+      coach('bad', 'Miss', 'Check the range under the cross. Far targets need you to aim higher, and moving ones need you to aim ahead.');
+    }
+    hud();
+  }
+  function adviseOffset(d, dx, dy, ring) {
+    const milX = dx / d * 1000, milY = dy / d * 1000;
+    const cm = v => Math.abs(v) >= 1 ? Math.abs(v).toFixed(1) + ' m' : Math.round(Math.abs(v) * 100) + ' cm';
+    const parts = [], fixes = [];
+    if (Math.abs(milY) >= 0.3) { parts.push(cm(dy) + (dy < 0 ? ' low' : ' high')); fixes.push(`hold ${Math.abs(milY).toFixed(1)} dots ${dy < 0 ? 'higher' : 'lower'}`); }
+    if (Math.abs(milX) >= 0.3) { parts.push(cm(dx) + (dx < 0 ? ' left' : ' right')); fixes.push(`${Math.abs(milX).toFixed(1)} dots ${dx < 0 ? 'right' : 'left'}`); }
+    if (!parts.length) { coach('good', ring === 10 ? 'Bullseye' : 'Centred', 'Right where you aimed. Keep that hold for this distance.'); return; }
+    const head = ring ? `${ring} ring` : 'Missed the target';
+    coach(ring >= 8 ? 'good' : 'bad', head, `${ring ? 'Landed' : 'It passed'} ${parts.join(' and ')}. Next shot, ${fixes.join(' and ')} (1 dot = 1 mil = ${d / 10} cm at ${d} m).`);
+  }
+
+  // ---------- hunt mode ----------
+  function spawnHuntTarget() {
+    const live = targets.filter(t => t.type !== 'paper' && t.state !== 'fall' && t.state !== 'hide').length;
+    if (live >= 4) return;
+    const d = rand(35, 260), w = 10 + d * 0.38, x = rand(-w, w);
+    const r = Math.random();
+    if (r < 0.2) spawnGong(d, x);
+    else spawnAnimal(r < 0.5 ? 'deer' : r < 0.78 ? 'boar' : 'rabbit', d, x, Math.random() < 0.45);
+  }
+  function updateTargets(dt) {
+    for (const t of [...targets]) {
+      if (t.type === 'gong') {
+        t.swingV += (-t.swing.rotation.x * 30 - t.swingV * 1.6) * dt; t.swing.rotation.x += t.swingV * dt;
+        if (mode === 'hunt') { t.t += dt; if (t.t > t.life && Math.abs(t.swingV) < 0.2) removeTarget(t); }
+        continue;
+      }
+      if (t.type !== 'animal') continue;
+      t.t += dt;
+      if (t.state === 'rise') { t.pivot.rotation.x = lerp(-Math.PI / 2, 0, clamp(t.t / 0.45, 0, 1)); if (t.t > 0.45) { t.state = 'up'; t.t = 0; } }
+      else if (t.state === 'up') {
+        if (t.moving) {
+          const right = new V(1, 0, 0).applyQuaternion(t.root.quaternion);
+          t.root.position.addScaledVector(right, t.speed * t.dir * dt);
+          const w = 12 + t.d * 0.42;
+          if (Math.abs(t.root.position.x) > w) { t.dir *= -1; t.flip.scale.x = t.dir; }
+          if (t.kind === 'rabbit') t.pivot.position.y = Math.abs(Math.sin(t.t * 7)) * 0.18;
+        }
+        if (t.t > t.life) { t.state = 'hide'; t.t = 0; const i = hittables.indexOf(t.body); if (i >= 0) hittables.splice(i, 1); }
+      } else if (t.state === 'fall') { t.pivot.rotation.x = lerp(0, -Math.PI / 2, clamp(t.t / 0.35, 0, 1)); if (t.t > 1.2) removeTarget(t); }
+      else if (t.state === 'hide') { t.pivot.rotation.x = lerp(0, -Math.PI / 2, clamp(t.t / 0.5, 0, 1)); if (t.t > 0.6) removeTarget(t); }
+    }
+  }
+  function clearHunt() { for (const t of [...targets]) if (t.type !== 'paper') removeTarget(t); }
+  function startHunt() {
+    mode = 'hunt'; clock = 90; spawnT = 0.5; resetStats(); clearHunt();
+    windOn = true; newWind(); paper.forEach(p => p.root.visible = false);
+    for (const p of paper) for (const m of [p.face, p.board]) { const i = hittables.indexOf(m); if (i >= 0) hittables.splice(i, 1); }
+    yaw = 0; pitch = 0.01;
+    $('overlay').hidden = true; $('clockCell').hidden = false; $('lanes').hidden = true; $('cardWrap').hidden = true;
+    $('modeBtn').textContent = 'Practice range';
+    coach('', '90-second hunt', 'Animals and steel plates pop up around the clearing. Pale ring = vital zone. Moving targets score 1.5×.');
+    hud();
+  }
+  function startPractice() {
+    mode = 'practice'; resetStats(); clearHunt();
+    paper.forEach(p => { p.root.visible = true; for (const m of [p.face, p.board]) if (!hittables.includes(m)) hittables.push(m); });
+    $('overlay').hidden = true; $('clockCell').hidden = true; $('lanes').hidden = false; $('cardWrap').hidden = false;
+    $('modeBtn').textContent = 'Start hunt';
+    setLane(lane); hud();
+  }
+  function finishHunt() {
+    const acc = stats.shots ? Math.round(stats.hits / stats.shots * 100) : 0;
+    $('ovScore').textContent = stats.points;
+    $('ovText').textContent = `${stats.hits} hits from ${stats.shots} shots (${acc}% accuracy)`;
+    $('overlay').hidden = false; clearHunt();
+  }
+  function resetStats() { stats = { points: 0, hits: 0, shots: 0 }; ammo = MAG; reloadT = 0; }
+  function newWind() { wind = windOn ? Math.round(rand(1, 6)) * (Math.random() < 0.5 ? -1 : 1) : 0; hud(); }
+
+  $('modeBtn').addEventListener('click', () => mode === 'practice' ? startHunt() : startPractice());
+  $('againBtn').addEventListener('click', startHunt);
+  $('practiceBtn').addEventListener('click', startPractice);
+  $('windBtn').addEventListener('click', () => {
+    windOn = !windOn; newWind();
+    if (windOn) coach('', 'Wind on', `A ${Math.abs(wind)} m/s wind is blowing ${wind > 0 ? 'left to right' : 'right to left'}. It pushes the bullet more the further it flies, so hold into the wind.`);
+  });
+  $('soundBtn').addEventListener('click', () => { sound = !sound; hud(); });
+
+  // ---------- HUD ----------
+  function hud() {
+    $('score').textContent = stats.points;
+    $('hits').textContent = stats.hits + '/' + stats.shots;
+    $('ammo').textContent = reloadT > 0 ? 'Reload' : ammo + '/' + MAG;
+    $('wind').textContent = wind ? Math.abs(wind) + ' m/s ' + (wind > 0 ? '→' : '←') : 'Calm';
+    $('windBtn').innerHTML = 'Wind: <b>' + (windOn ? 'On' : 'Off') + '</b>';
+    $('soundBtn').innerHTML = 'Sound: <b>' + (sound ? 'On' : 'Off') + '</b>';
+  }
+  function coach(kind, tag, text) { $('coach').className = 'coach ' + kind; $('coachTag').textContent = tag; $('coachText').textContent = text; }
+  function popup(p, text, color) {
+    const v = p.clone().project(camera);
+    if (v.z > 1) return;
+    const el = document.createElement('div'); el.className = 'pop'; el.textContent = text; el.style.color = color;
+    el.style.left = ((v.x + 1) / 2 * innerWidth) + 'px'; el.style.top = ((1 - v.y) / 2 * innerHeight - 30) + 'px';
+    $('app').appendChild(el); setTimeout(() => el.remove(), 1300);
+  }
+  const card = $('hitCard'), cctx = card.getContext('2d');
+  function drawCard() {
+    const t = paper[lane], w = card.width, c = w / 2;
+    cctx.drawImage(FACE_TEX.image, 0, 0, w, w);
+    t.holes.forEach(([x, y], i) => {
+      const last = i === t.holes.length - 1;
+      cctx.fillStyle = last ? '#ff3b2f' : '#ffd23a';
+      cctx.beginPath(); cctx.arc(c + x * c, c - y * c, last ? 9 : 7, 0, 7); cctx.fill();
+      cctx.strokeStyle = '#151515'; cctx.lineWidth = 2; cctx.stroke();
+    });
+    $('cardTitle').textContent = t.d + ' m target';
+    if (t.holes.length < 2) { $('cardText').textContent = t.holes.length ? 'Red is your latest shot.' : 'Your hits show up here.'; return; }
+    let mx = 0, my = 0, spread = 0;
+    t.holes.forEach(([x, y]) => { mx += x; my += y; }); mx /= t.holes.length; my /= t.holes.length;
+    t.holes.forEach(([x, y]) => { spread = Math.max(spread, Math.hypot(x - mx, y - my)); });
+    const cmSpread = Math.round(spread * 2 * t.R * 100);
+    $('cardText').textContent = `${t.holes.length} hits. Group size about ${cmSpread} cm. Red is your latest shot.`;
+  }
+
+  // ---------- scope / crosshair overlay ----------
+  let rangeText = '';
+  function drawOverlay() {
+    const dpr = Math.min(devicePixelRatio || 1, 2), W = innerWidth, H = innerHeight;
+    fctx.setTransform(dpr, 0, 0, dpr, 0, 0); fctx.clearRect(0, 0, W, H);
+    const cx = W / 2, cy = H / 2;
+    if (zoom === 1) {
+      fctx.strokeStyle = 'rgba(255,255,255,.9)'; fctx.lineWidth = 2;
+      for (const [a, b] of [[[-14, 0], [-5, 0]], [[5, 0], [14, 0]], [[0, -14], [0, -5]], [[0, 5], [0, 14]]]) {
+        fctx.beginPath(); fctx.moveTo(cx + a[0], cy + a[1]); fctx.lineTo(cx + b[0], cy + b[1]); fctx.stroke();
+      }
+      fctx.fillStyle = '#ff7a1a'; fctx.beginPath(); fctx.arc(cx, cy, 2, 0, 7); fctx.fill();
+    } else {
+      const R = Math.min(W, H) * 0.46;
+      fctx.fillStyle = '#050705';
+      fctx.beginPath(); fctx.rect(0, 0, W, H); fctx.arc(cx, cy, R, 0, Math.PI * 2, true); fctx.fill();
+      const g = fctx.createRadialGradient(cx, cy, R * 0.8, cx, cy, R);
+      g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.65)');
+      fctx.fillStyle = g; fctx.beginPath(); fctx.arc(cx, cy, R, 0, 7); fctx.fill();
+      // mil-dot reticle: 1 dot = 1 milliradian
+      const pxMil = (H / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) / 1000;
+      fctx.strokeStyle = '#0b0b0b'; fctx.fillStyle = '#0b0b0b';
+      fctx.lineWidth = 1.2;
+      fctx.beginPath(); fctx.moveTo(cx - R, cy); fctx.lineTo(cx + R, cy); fctx.moveTo(cx, cy - R); fctx.lineTo(cx, cy + R); fctx.stroke();
+      fctx.lineWidth = 5;
+      const post = Math.min(R, 10 * pxMil + 6);
+      fctx.beginPath(); fctx.moveTo(cx - R, cy); fctx.lineTo(cx - post, cy); fctx.moveTo(cx + post, cy); fctx.lineTo(cx + R, cy);
+      fctx.moveTo(cx, cy + post); fctx.lineTo(cx, cy + R); fctx.moveTo(cx, cy - R); fctx.lineTo(cx, cy - post); fctx.stroke();
+      fctx.font = '600 11px "Barlow Condensed", sans-serif'; fctx.textAlign = 'left';
+      for (let m = 1; m <= 10; m++) {
+        const o = m * pxMil; if (o > R - 6) break;
+        const rr = m % 5 === 0 ? 2.6 : 1.9;
+        for (const [x, y] of [[cx + o, cy], [cx - o, cy], [cx, cy + o], [cx, cy - o]]) { fctx.beginPath(); fctx.arc(x, y, rr, 0, 7); fctx.fill(); }
+        if (m % 2 === 0) fctx.fillText(m, cx + 6, cy + o + 4);
+      }
+      fctx.fillStyle = '#ff3b2f'; fctx.beginPath(); fctx.arc(cx, cy, 1.6, 0, 7); fctx.fill();
+      // breath meter and readouts
+      fctx.font = '600 14px "Barlow Condensed", sans-serif'; fctx.textAlign = 'center'; fctx.fillStyle = '#f1ede4';
+      const ty = cy + R * 0.6;
+      fctx.fillStyle = 'rgba(5,7,5,.55)'; fctx.fillRect(cx - 70, ty - 16, 140, 34);
+      fctx.fillStyle = '#f1ede4'; fctx.fillText(zoom + '× · ' + (rangeText || 'Range –'), cx, ty);
+      const bw = 120, bx = cx - bw / 2, by = ty + 7;
+      fctx.fillStyle = 'rgba(255,255,255,.18)'; fctx.fillRect(bx, by, bw, 6);
+      fctx.fillStyle = winded > 0 ? '#ff6b5a' : holding ? '#8fd16b' : '#f1ede4'; fctx.fillRect(bx, by, bw * breath, 6);
+    }
+    if (zoom === 1 && mode === 'hunt') {   // spotting markers so you know where to scope in
+      fctx.font = '600 13px "Barlow Condensed", sans-serif'; fctx.textAlign = 'center';
+      for (const t of targets) {
+        if (t.type === 'paper' || t.state === 'fall' || t.state === 'hide') continue;
+        const v = t.root.position.clone().setY(t.type === 'gong' ? 2.4 + t.r * 2 : 2.3).project(camera);
+        if (v.z > 1 || Math.abs(v.x) > 1 || Math.abs(v.y) > 1) continue;
+        const x = (v.x + 1) / 2 * W, y = (1 - v.y) / 2 * H;
+        fctx.fillStyle = '#ff7a1a'; fctx.beginPath(); fctx.moveTo(x - 6, y - 10); fctx.lineTo(x + 6, y - 10); fctx.lineTo(x, y - 2); fctx.fill();
+        fctx.fillStyle = 'rgba(241,237,228,.95)'; fctx.fillText(Math.round(t.d) + ' m', x, y - 14);
+      }
+    }
+    if (zoom === 1 && rangeText) {
+      fctx.font = '600 14px "Barlow Condensed", sans-serif'; fctx.textAlign = 'center'; fctx.fillStyle = 'rgba(241,237,228,.9)';
+      fctx.fillText(rangeText, cx, cy + 34);
+    }
+    if (reloadT > 0) { fctx.font = '700 18px "Barlow Condensed", sans-serif'; fctx.fillStyle = '#ff7a1a'; fctx.textAlign = 'center'; fctx.fillText('RELOADING', cx, cy - 40); }
+  }
+  function measureRange() {
+    const dir = new V(0, 0, -1).applyQuaternion(camera.quaternion);
+    ray.set(camera.position, dir); ray.far = 1000;
+    const hit = ray.intersectObjects(hittables, false)[0];
+    let d = hit ? hit.distance : (dir.y < -1e-4 ? -camera.position.y / dir.y : Infinity);
+    rangeText = d < 1000 ? 'Range ' + Math.round(d) + ' m' : '';
+  }
+
+  // ---------- main loop ----------
+  let last = performance.now(), rangeTick = 0;
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    // breathing sway grows when scoped; holding breath steadies it for a few seconds
+    swayT += dt;
+    if (holding && winded <= 0 && breath > 0) { breath = Math.max(0, breath - dt / 4.5); if (breath === 0) winded = 2.5; }
+    else { if (winded > 0) winded -= dt; breath = Math.min(1, breath + dt / 3); }
+    const steady = holding && winded <= 0 && breath > 0 ? 0.12 : winded > 0 ? 2.2 : 1;
+    const amp = (zoom === 1 ? 0.0012 : 0.0016) * steady;
+    const sx = Math.sin(swayT * 0.83) * amp + Math.sin(swayT * 2.1) * amp * 0.35;
+    const sy = Math.sin(swayT * 1.17 + 1) * amp * 0.8 + Math.cos(swayT * 2.7) * amp * 0.25;
+    recoil *= Math.exp(-dt * 9);
+    camera.rotation.set(pitch + sy + recoil, yaw + sx, 0);
+    camera.updateMatrixWorld();
+
+    if (cycleT > 0) { cycleT -= dt; rifle.userData.bolt.position.z = 0.08 + Math.max(0, Math.sin((0.85 - cycleT) / 0.85 * Math.PI)) * 0.06; }
+    if (reloadT > 0) { reloadT -= dt; rifle.rotation.z = Math.sin(Math.min(1, (1.6 - reloadT) / 1.6) * Math.PI) * 0.5; if (reloadT <= 0) { reloadT = 0; ammo = MAG; rifle.rotation.z = 0; hud(); } }
+    rifle.position.z = lerp(rifle.position.z, -0.5, 1 - Math.exp(-dt * 10));
+    flash.intensity = Math.max(0, flash.intensity - dt * 30);
+
+    stepBullets(dt);
+    updateTargets(dt);
+    for (let i = fxSprites.length - 1; i >= 0; i--) {
+      const f = fxSprites[i]; f.t += dt;
+      f.s.scale.setScalar(f.size * (1 + f.t * 2)); f.s.material.opacity = Math.max(0, 1 - f.t / 0.9);
+      if (f.t > 0.9) { scene.remove(f.s); fxSprites.splice(i, 1); }
+    }
+
+    if (mode === 'hunt' && $('overlay').hidden) {
+      clock -= dt; spawnT -= dt;
+      if (spawnT <= 0) { spawnHuntTarget(); spawnT = rand(1.6, 3.2); }
+      if (clock <= 0) { clock = 0; finishHunt(); }
+      $('clock').textContent = Math.ceil(clock);
+    }
+    if ((rangeTick -= dt) <= 0) { measureRange(); rangeTick = 0.1; }
+
+    renderer.render(scene, camera);
+    drawOverlay();
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- sound ----------
+  let ac = null;
+  function initAudio() { if (!ac) try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  function noise(len) {
+    const buf = ac.createBuffer(1, ac.sampleRate * len, ac.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+    const s = ac.createBufferSource(); s.buffer = buf; return s;
+  }
+  function tone(kind) {
+    if (!sound || !ac) return;
+    const t = ac.currentTime, g = ac.createGain(); g.connect(ac.destination);
+    if (kind === 'shot') {
+      const n = noise(0.9), f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(2400, t); f.frequency.exponentialRampToValueAtTime(300, t + 0.6);
+      n.connect(f); f.connect(g); g.gain.setValueAtTime(0.9, t); n.start(t);
+      const o = ac.createOscillator(), og = ac.createGain(); o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(35, t + 0.25);
+      og.gain.setValueAtTime(0.8, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.3); o.connect(og); og.connect(ac.destination); o.start(t); o.stop(t + 0.3);
+    } else if (kind === 'steel') {
+      for (const [fq, v] of [[880, 0.3], [1320, 0.15], [2140, 0.08]]) {
+        const o = ac.createOscillator(), og = ac.createGain(); o.type = 'sine'; o.frequency.value = fq;
+        og.gain.setValueAtTime(v, t); og.gain.exponentialRampToValueAtTime(0.001, t + 1.1); o.connect(og); og.connect(ac.destination); o.start(t); o.stop(t + 1.2);
+      }
+    } else if (kind === 'paper' || kind === 'thud') {
+      const n = noise(0.12), f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = kind === 'paper' ? 1800 : 500;
+      n.connect(f); f.connect(g); g.gain.setValueAtTime(kind === 'paper' ? 0.25 : 0.6, t); n.start(t);
+    } else {
+      const reps = kind === 'reload' ? [0, 0.5, 1.2] : [0];
+      for (const dly of reps) {
+        const n = noise(0.04), f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 2500;
+        const gg = ac.createGain(); gg.gain.value = 0.3; n.connect(f); f.connect(gg); gg.connect(ac.destination); n.start(t + dly);
+      }
+    }
+  }
+
+  // ---------- resize / boot ----------
+  function resize() {
+    const w = gl.clientWidth, h = gl.clientHeight, dpr = Math.min(devicePixelRatio || 1, 2);
+    renderer.setPixelRatio(dpr); renderer.setSize(w, h, false);
+    fx.width = w * dpr; fx.height = h * dpr;
+    const base = w < h ? 72 : 60;
+    camera.aspect = w / h; camera.fov = base / zoom; camera.updateProjectionMatrix();
+  }
+  addEventListener('resize', resize);
+  resize(); hud(); drawCard();
+  // test hook: lets an automated check aim and shoot without dragging
+  window.__range = { aim(y, p) { yaw = y; pitch = p; }, get state() { return { yaw, pitch, ammo, stats: { ...stats }, bullets: bullets.length, reloadT }; },
+    testShot() {   // fires one steady shot and runs it to the end instantly
+      cycleT = 0; reloadT = 0; ammo = MAG;
+      camera.rotation.set(pitch, yaw, 0); camera.updateMatrixWorld(); fire();
+      for (let i = 0; i < 400 && bullets.length; i++) stepBullets(1 / 60);
+      cycleT = 0; return $('coachTag').textContent + ' | ' + $('coachText').textContent;
+    },
+    fire, setLane, setZoom, startHunt, paper, targets, spawnAnimal, spawnGong, laneX, EYE, holdBreath(v) { holding = v; } };
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
