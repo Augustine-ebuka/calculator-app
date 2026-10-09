@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Hoop Shot 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Layout: full-screen 3D arena; scoreboard top centre, settings top right, camera switcher bottom centre, coach card bottom left. */
+:root {
+  --arena: #050a22;
+  --panel: rgba(12, 18, 44, 0.86);
+  --line: #24305c;
+  --chalk: #f1ede4;
+  --muted: #9aa6c8;
+  --led: #ffb43d;
+  --ball: #e8742c;
+  --good: #5fd18b;
+  --bad: #ff6b5a;
+  --display: "Anton", "Impact", "Arial Narrow", sans-serif;
+  --body: "Barlow Condensed", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--arena); color: var(--chalk);
+  font-family: var(--body); font-size: 16px; overflow: hidden;
+  -webkit-user-select: none; user-select: none; touch-action: none;
+}
+.app { position: relative; height: 100%; }
+#gl, #fx { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#gl { cursor: grab; }
+#fx { pointer-events: none; }
+.app.aiming #gl { cursor: grabbing; }
+
+.board {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 2px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; padding: 4px; max-width: calc(100% - 32px);
+}
+.cell { display: grid; justify-items: center; padding: 2px 12px; min-width: 0; }
+.cell + .cell { border-left: 1px solid var(--line); }
+.lbl { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.num {
+  font-family: var(--display); font-size: 26px; line-height: 1.1; color: var(--led);
+  font-variant-numeric: tabular-nums; text-shadow: 0 0 10px rgba(255,180,61,.35); white-space: nowrap;
+}
+.cell.plain .num { color: var(--chalk); text-shadow: none; }
+
+button { font-family: var(--body); }
+.controls { position: absolute; top: 10px; right: 16px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.btn {
+  font-weight: 600; font-size: 13px; line-height: 1; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--chalk); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 4px; padding: 8px 10px; cursor: pointer;
+}
+.btn:hover { border-color: var(--muted); }
+.btn:focus-visible, .views button:focus-visible { outline: 2px solid var(--led); outline-offset: 2px; }
+.btn b { color: var(--led); font-weight: 700; }
+
+.views {
+  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 2px; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 6px; padding: 4px;
+}
+.views .lbl { padding: 0 8px 0 6px; }
+.views button {
+  font-weight: 600; font-size: 14px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted); background: transparent; border: 0; border-radius: 4px; padding: 8px 11px; cursor: pointer; white-space: nowrap;
+}
+.views button[aria-pressed="true"] { background: var(--ball); color: #1b0f06; }
+
+.coach {
+  position: absolute; left: 16px; bottom: 16px; width: min(360px, calc(50% - 230px));
+  min-width: 220px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  padding: 10px 14px; font-size: 17px; line-height: 1.3;
+}
+.coach .tag { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--led); font-weight: 700; display: block; margin-bottom: 2px; }
+.coach.good .tag { color: var(--good); }
+.coach.bad .tag { color: var(--bad); }
+
+#banner {
+  position: absolute; left: 0; right: 0; top: 22%; text-align: center; pointer-events: none;
+  font-family: var(--display); font-size: clamp(36px, 7vw, 72px); letter-spacing: .02em;
+  text-shadow: 0 4px 24px rgba(0,0,0,.6); opacity: 0;
+}
+#banner.show { animation: pop 1.5s ease-out forwards; }
+@keyframes pop {
+  0% { opacity: 0; transform: scale(.7); }
+  12% { opacity: 1; transform: scale(1.06); }
+  20% { transform: scale(1); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-14px); }
+}
+@media (prefers-reduced-motion: reduce) { #banner.show { animation-duration: 1.8s; animation-timing-function: steps(1, end); } }
+
+.overlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(4,8,24,.75); padding: 16px; }
+.card { text-align: center; max-width: 380px; display: grid; gap: 10px; }
+.card h2 { font-family: var(--display); font-weight: 400; font-size: 44px; margin: 0; text-wrap: balance; }
+.card p { margin: 0; color: var(--muted); font-size: 18px; }
+.card .big { font-family: var(--display); font-size: 72px; color: var(--led); line-height: 1; }
+.card .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.card button { font-weight: 700; font-size: 18px; line-height: 1; letter-spacing: .1em; text-transform: uppercase; background: var(--ball); color: #1b0f06; border: 0; border-radius: 4px; padding: 12px 22px; cursor: pointer; }
+.card button.ghost { background: transparent; color: var(--chalk); border: 1px solid var(--line); }
+
+@media (max-width: 1000px) {
+  .board { left: 16px; transform: none; }
+  .cell { padding: 2px 6px; }
+  .num { font-size: 19px; }
+  .lbl { font-size: 9px; }
+  .views { top: 66px; bottom: auto; left: 16px; right: 16px; transform: none; overflow-x: auto; }
+  .views .lbl { display: none; }
+  .views button { flex: 1; padding: 7px 6px; font-size: 13px; }
+  .controls { top: auto; bottom: 16px; }
+  .coach { width: auto; min-width: 0; right: 170px; font-size: 15px; }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <canvas id="gl" aria-label="3D basketball court. Drag down and release to shoot."></canvas>
+  <canvas id="fx"></canvas>
+
+  <div class="board" role="status">
+    <div class="cell"><span class="lbl">Points</span><span class="num" id="score">0</span></div>
+    <div class="cell"><span class="lbl">Made</span><span class="num" id="made">0/0</span></div>
+    <div class="cell"><span class="lbl">Streak</span><span class="num" id="streak">0</span></div>
+    <div class="cell"><span class="lbl">Best</span><span class="num" id="best">0</span></div>
+    <div class="cell plain"><span class="lbl">Range</span><span class="num" id="range">0 m</span></div>
+    <div class="cell plain" id="clockCell" hidden><span class="lbl">Clock</span><span class="num" id="clock">60</span></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" id="guideBtn" type="button">Aim guide: <b>Full</b></button>
+    <button class="btn" id="soundBtn" type="button">Sound: <b>On</b></button>
+    <button class="btn" id="modeBtn" type="button">60s challenge</button>
+  </div>
+
+  <div class="views" role="group" aria-label="Camera view">
+    <span class="lbl">Camera</span>
+    <button type="button" data-view="rear" aria-pressed="true">Behind</button>
+    <button type="button" data-view="front" aria-pressed="false">Front</button>
+    <button type="button" data-view="side" aria-pressed="false">Side</button>
+    <button type="button" data-view="high" aria-pressed="false">High</button>
+    <button type="button" data-view="ball" aria-pressed="false">Ball cam</button>
+  </div>
+
+  <div class="coach" id="coach">
+    <span class="tag" id="coachTag">How to shoot</span>
+    <span id="coachText">Press anywhere and drag down, then let go. A longer pull means more power. Pull sideways to aim: the ball flies the opposite way, like a slingshot.</span>
+  </div>
+
+  <div id="banner"></div>
+
+  <div class="overlay" id="overlay" hidden>
+    <div class="card">
+      <h2>Time!</h2>
+      <div class="big" id="ovScore">0</div>
+      <p id="ovText"></p>
+      <div class="row">
+        <button id="againBtn" type="button">Play again</button>
+        <button id="practiceBtn" class="ghost" type="button">Practice</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  if (!window.THREE) {
+    $('coachTag').textContent = 'Could not load 3D engine';
+    $('coachText').textContent = 'The game needs the three.js library from cdn.jsdelivr.net. Check your connection and reload.';
+    return;
+  }
+  const V = THREE.Vector3;
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smooth = t => t * t * (3 - 2 * t);
+
+  // ---------- real-world dimensions (metres) ----------
+  const G = 9.8, BALL_R = 0.12, RIM_R = 0.23, TUBE = 0.012, RIM_Y = 3.05;
+  const RIM = new V(0, RIM_Y, 0);
+  const BASELINE_Z = -1.58;
+  const ARC = 52 * Math.PI / 180;            // launch angle
+  const STEP = 1 / 240;
+  const BOXES = [                             // static colliders: [minX,minY,minZ,maxX,maxY,maxZ,bounce]
+    [-0.9, 2.9, -0.43, 0.9, 3.95, -0.38, 0.62],   // backboard
+    [-0.07, 2.99, -0.38, 0.07, 3.05, -0.25, 0.4], // rim bracket
+    [-0.13, 0, -2.75, 0.13, 3.55, -2.49, 0.5],    // stanchion pole
+    [-0.08, 3.32, -2.49, 0.08, 3.46, -0.43, 0.5], // arm to board
+    [-0.6, 0, -3.3, 0.6, 0.9, -2.3, 0.4],         // base pad
+  ];
+
+  // ---------- renderer / scene ----------
+  const gl = $('gl'), fx = $('fx'), fctx = fx.getContext('2d');
+  const renderer = new THREE.WebGLRenderer({ canvas: gl, antialias: true });
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x040820);
+  scene.fog = new THREE.Fog(0x040820, 22, 48);
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 120);
+
+  scene.add(new THREE.HemisphereLight(0x8fb0ff, 0x2a160a, 0.55));
+  scene.add(new THREE.AmbientLight(0x1e2c66, 0.5));
+  const spot = new THREE.SpotLight(0xfff4e6, 1.6, 40, 0.62, 0.55, 1.2);
+  spot.position.set(1.5, 15, 7); spot.target.position.set(0, 0, 3.5);
+  spot.castShadow = true; spot.shadow.mapSize.set(2048, 2048); spot.shadow.bias = -0.0004;
+  spot.shadow.camera.near = 5; spot.shadow.camera.far = 30;
+  scene.add(spot, spot.target);
+  const rimLight = new THREE.PointLight(0x5c86ff, 0.9, 14); rimLight.position.set(0, 6, -4); scene.add(rimLight);
+
+  function canvasTex(w, h, paint) {
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    paint(c.getContext('2d'), w, h);
+    const t = new THREE.CanvasTexture(c);
+    t.encoding = THREE.sRGBEncoding; t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    return t;
+  }
+  const std = (color, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.6, metalness: 0 }, o));
+  function mesh(geo, mat, x = 0, y = 0, z = 0, parent = scene) {
+    const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z);
+    m.castShadow = true; m.receiveShadow = true; parent.add(m); return m;
+  }
+
+  // ---------- court ----------
+  const K = 100; // px per metre on the court texture
+  const courtTex = canvasTex(15 * K, 14 * K, (g, w, h) => {
+    g.fillStyle = '#e2784a'; g.fillRect(0, 0, w, h);
+    for (let x = 0, i = 0; x < w; x += 0.09 * K, i++) {              // maple planks
+      g.fillStyle = `hsl(${18 + (i * 37 % 7)}, ${62 + (i * 13 % 9)}%, ${55 + (i * 29 % 7)}%)`;
+      g.fillRect(x, 0, 0.09 * K, h);
+      g.fillStyle = 'rgba(80,30,10,.18)'; g.fillRect(x, 0, 1, h);
+      for (let y = (i * 173) % 260; y < h; y += 260 + (i * 31 % 90)) g.fillRect(x, y, 0.09 * K, 1);
+    }
+    const P = (x, z) => [(x + 7.5) * K, (z - BASELINE_Z) * K];
+    const [kx0, ky0] = P(-2.45, BASELINE_Z), [kx1, ky1] = P(2.45, 4.22);
+    g.fillStyle = 'rgba(160,40,30,.55)'; g.fillRect(kx0, ky0, kx1 - kx0, ky1 - ky0);
+    g.strokeStyle = '#fbe9cf'; g.lineWidth = 0.05 * K;
+    g.strokeRect(2, 2, w - 4, h - 4);
+    g.strokeRect(kx0, ky0, kx1 - kx0, ky1 - ky0);
+    const [bx, by] = P(0, 0), [fx0, fy0] = P(0, 4.22);
+    g.beginPath(); g.arc(fx0, fy0, 1.8 * K, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.arc(bx, by, 1.25 * K, 0, Math.PI); g.stroke();
+    const th = Math.acos(6.6 / 6.75), cz = Math.sqrt(6.75 ** 2 - 6.6 ** 2);
+    g.beginPath(); g.moveTo(...P(-6.6, BASELINE_Z)); g.lineTo(...P(-6.6, cz));
+    g.arc(bx, by, 6.75 * K, Math.PI - th, th, true); g.lineTo(...P(6.6, BASELINE_Z)); g.stroke();
+    g.beginPath(); g.arc(w / 2, h, 1.8 * K, Math.PI, 0); g.stroke();
+    g.font = `${0.9 * K}px Anton, Impact, sans-serif`; g.textAlign = 'center'; g.fillStyle = 'rgba(251,233,207,.28)';
+    g.fillText('HOOP SHOT', w / 2, h - 2.6 * K);
+  });
+  const court = mesh(new THREE.PlaneGeometry(15, 14), std(0xffffff, { map: courtTex, roughness: 0.42 }), 0, 0, BASELINE_Z + 7);
+  court.rotation.x = -Math.PI / 2; court.castShadow = false;
+  const apron = mesh(new THREE.PlaneGeometry(90, 90), std(0x0b1335, { roughness: 0.8 }), 0, -0.01, 5);
+  apron.rotation.x = -Math.PI / 2; apron.castShadow = false;
+
+  // ---------- arena: stands, crowd, LED boards, light beams ----------
+  const standMat = std(0x0a1130, { roughness: 0.9 });
+  const seats = [];
+  for (let r = 0; r < 9; r++) {
+    const y = 0.45 + r * 0.5;
+    mesh(new THREE.BoxGeometry(34, 0.5, 0.9), standMat, 0, y - 0.25, -5.2 - r * 0.9).castShadow = false;
+    for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.9, 0.5, 24), standMat, s * (10.2 + r * 0.9), y - 0.25, 6).castShadow = false;
+    for (let x = -16; x <= 16; x += 0.55) if (Math.random() < 0.82) seats.push([x, y, -5.2 - r * 0.9, 0]);
+    for (let z = -4; z <= 17; z += 0.55) for (const s of [-1, 1]) if (Math.random() < 0.82) seats.push([s * (10.2 + r * 0.9), y, z, s]);
+  }
+  const crowd = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.17, 0.3, 3, 8), std(0xffffff, { roughness: 0.9 }), seats.length);
+  const shirt = [0x1b2a6b, 0x2d3f8f, 0x7a2430, 0xb35a1f, 0x3a3f4f, 0xd0d4e0, 0x24614a, 0x5a2d82];
+  const m4 = new THREE.Matrix4(), col = new THREE.Color();
+  seats.forEach(([x, y, z], i) => {
+    m4.makeTranslation(x + (Math.random() - .5) * .1, y + 0.32, z); crowd.setMatrixAt(i, m4);
+    crowd.setColorAt(i, col.setHex(shirt[(Math.random() * shirt.length) | 0]).multiplyScalar(0.55));
+  });
+  scene.add(crowd);
+
+  const ledTex = canvasTex(1024, 64, (g, w, h) => {
+    const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#0a1a6a'); gr.addColorStop(.5, '#1f47d6'); gr.addColorStop(1, '#0a1a6a');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#e8eeff'; g.fillRect(0, h - 6, w, 3);
+    g.font = '38px Anton, Impact, sans-serif'; g.fillStyle = 'rgba(232,238,255,.9)'; g.textAlign = 'center';
+    for (let x = 128; x < w; x += 256) g.fillText('HOOP SHOT', x, 44);
+  });
+  ledTex.wrapS = THREE.RepeatWrapping;
+  const ledMat = new THREE.MeshBasicMaterial({ map: ledTex });
+  const ledBack = mesh(new THREE.BoxGeometry(22, 0.8, 0.15), ledMat, 0, 0.4, -4.2); ledBack.castShadow = false;
+  for (const s of [-1, 1]) {
+    const b = mesh(new THREE.BoxGeometry(0.15, 0.8, 20), ledMat, s * 9.1, 0.4, 6); b.castShadow = false;
+  }
+  const railMat = new THREE.MeshBasicMaterial({ color: 0xdfe6ff });
+  for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.05, 0.05, 30), railMat, s * 9.6, 1.5, 6).castShadow = false;
+  mesh(new THREE.BoxGeometry(40, 0.05, 0.05), railMat, 0, 1.5, -4.7).castShadow = false;
+
+  const beamMat = new THREE.MeshBasicMaterial({ color: 0x3b6bff, transparent: true, opacity: 0.07, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  [[-6, -6, 0.25], [0, -7, 0], [6, -6, -0.25]].forEach(([x, z, tilt]) => {
+    const c = new THREE.Mesh(new THREE.ConeGeometry(3.2, 18, 32, 1, true), beamMat);
+    c.position.set(x, 9, z); c.rotation.z = tilt; scene.add(c);
+  });
+  const glowTex = canvasTex(256, 256, (g, w, h) => {
+    const r = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+    r.addColorStop(0, 'rgba(70,110,255,.55)'); r.addColorStop(1, 'rgba(70,110,255,0)');
+    g.fillStyle = r; g.fillRect(0, 0, w, h);
+  });
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(40, 26), new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, depthWrite: false }));
+  glow.position.set(0, 10, -14); scene.add(glow);
+
+  // ---------- hoop ----------
+  const steel = std(0x1a2350, { metalness: 0.5, roughness: 0.4 });
+  mesh(new THREE.BoxGeometry(0.26, 3.55, 0.26), steel, 0, 1.775, -2.62);
+  mesh(new THREE.BoxGeometry(0.16, 0.14, 2.06), steel, 0, 3.39, -1.46);
+  mesh(new THREE.BoxGeometry(1.2, 0.9, 1.0), std(0x1f47d6, { roughness: 0.7 }), 0, 0.45, -2.8);
+  const boardTex = canvasTex(720, 420, (g, w, h) => {
+    g.fillStyle = 'rgba(220,235,255,0.16)'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#ff3b2f'; g.lineWidth = 14; g.strokeRect(7, 7, w - 14, h - 14);
+    g.lineWidth = 10; g.strokeRect(w / 2 - 118, h - 60 - 180, 236, 180);
+  });
+  const board = mesh(new THREE.BoxGeometry(1.8, 1.05, 0.05),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, map: boardTex, transparent: true, roughness: 0.1, metalness: 0.1, opacity: 1, depthWrite: false }),
+    0, 3.425, -0.405);
+  board.castShadow = false;
+  const rimMat = std(0xff4a1c, { metalness: 0.6, roughness: 0.35, emissive: 0x401000 });
+  const rimMesh = mesh(new THREE.TorusGeometry(RIM_R, TUBE * 1.5, 12, 48), rimMat, 0, RIM_Y, 0);
+  rimMesh.rotation.x = Math.PI / 2;
+  mesh(new THREE.BoxGeometry(0.1, 0.05, 0.16), rimMat, 0, RIM_Y - 0.02, -0.31);
+
+  // net: rings of knots, diamond weave
+  const NET_N = 16, NET_R = 5, NET_D = 0.42;
+  const netPts = [];
+  for (let j = 0; j < NET_R; j++) for (let i = 0; i < NET_N; i++) netPts.push(new V());
+  const netIdx = [];
+  for (let j = 0; j < NET_R - 1; j++) for (let i = 0; i < NET_N; i++) {
+    netIdx.push(j * NET_N + i, (j + 1) * NET_N + i, j * NET_N + i, (j + 1) * NET_N + (i + NET_N - 1 + (j % 2 ? 2 : 0)) % NET_N);
+  }
+  const netGeo = new THREE.BufferGeometry();
+  netGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(netPts.length * 3), 3));
+  netGeo.setIndex(netIdx);
+  const net = new THREE.LineSegments(netGeo, new THREE.LineBasicMaterial({ color: 0xf4f6ff, transparent: true, opacity: 0.9 }));
+  scene.add(net);
+  let netKick = 0, netT = 0;
+  function updateNet(dt) {
+    netT += dt; netKick = Math.max(0, netKick - dt * 1.2);
+    const pos = netGeo.attributes.position;
+    for (let j = 0; j < NET_R; j++) {
+      const f = j / (NET_R - 1);
+      const r = lerp(RIM_R, 0.14, f);
+      const y = RIM_Y - f * NET_D * (1 + netKick * 0.25);
+      const sway = Math.sin(netT * 16 + j) * 0.03 * netKick * f;
+      for (let i = 0; i < NET_N; i++) {
+        const a = (i + (j % 2) * 0.5) / NET_N * Math.PI * 2;
+        const p = netPts[j * NET_N + i].set(Math.cos(a) * r + sway, y, Math.sin(a) * r);
+        if (j > 0) { // ball pushes the mesh outwards
+          const dx = p.x - ball.p.x, dy = p.y - ball.p.y, dz = p.z - ball.p.z, d = Math.hypot(dx, dy, dz);
+          if (d < BALL_R + 0.02 && d > 1e-4) { const k = (BALL_R + 0.02) / d; p.set(ball.p.x + dx * k, ball.p.y + dy * k, ball.p.z + dz * k); }
+        }
+        pos.setXYZ(j * NET_N + i, p.x, p.y, p.z);
+      }
+    }
+    pos.needsUpdate = true;
+  }
+
+  // ---------- ball ----------
+  const ballTex = canvasTex(1024, 512, (g, w, h) => {
+    g.fillStyle = '#d8622a'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 26000; i++) { g.fillStyle = Math.random() < .5 ? 'rgba(60,20,0,.10)' : 'rgba(255,190,140,.10)'; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+    g.strokeStyle = '#1c0d05'; g.lineWidth = 9;
+    g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.stroke();
+    for (const x of [w * .25, w * .75]) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+    for (const x0 of [0, w / 2, w]) {
+      g.beginPath();
+      for (let y = 0; y <= h; y += 4) { const x = x0 + Math.sin(y / h * Math.PI) * w * 0.14; y ? g.lineTo(x, y) : g.moveTo(x, y); }
+      g.stroke(); g.beginPath();
+      for (let y = 0; y <= h; y += 4) { const x = x0 - Math.sin(y / h * Math.PI) * w * 0.14; y ? g.lineTo(x, y) : g.moveTo(x, y); }
+      g.stroke();
+    }
+  });
+  const ballMesh = mesh(new THREE.SphereGeometry(BALL_R, 40, 28), std(0xffffff, { map: ballTex, roughness: 0.75 }));
+  const ball = { p: new V(0, 1, 5), v: new V(), spin: new V(), held: true };
+
+  // ---------- player ----------
+  const skin = std(0x7b4a2a, { roughness: 0.55 });
+  const jersey = std(0xf3f4f8, { roughness: 0.75 });
+  const trim = std(0x1d2f8c, { roughness: 0.7 });
+  const shoe = std(0xe0322b, { roughness: 0.5 });
+  const sock = std(0xffffff, { roughness: 0.9 });
+  const hair = std(0x14100e, { roughness: 1 });
+  const cap = (r, len) => new THREE.CapsuleGeometry(r, len, 6, 14);
+
+  const player = new THREE.Group(); scene.add(player);
+  const body = new THREE.Group(); player.add(body);
+  const LEG = 0.46, HIP_Y = 0.97;
+  const legs = [-1, 1].map(side => {
+    const hip = new THREE.Group(); hip.position.set(0.11 * side, HIP_Y, 0); body.add(hip);
+    mesh(cap(0.078, 0.3), skin, 0, -0.24, 0, hip);
+    mesh(new THREE.CylinderGeometry(0.105, 0.1, 0.26, 16), jersey, 0, -0.1, 0, hip);
+    const knee = new THREE.Group(); knee.position.y = -LEG; hip.add(knee);
+    mesh(cap(0.062, 0.3), skin, 0, -0.2, 0, knee);
+    mesh(new THREE.CylinderGeometry(0.066, 0.062, 0.14, 14), sock, 0, -0.36, 0, knee);
+    const foot = new THREE.Group(); foot.position.y = -LEG; knee.add(foot);
+    mesh(new THREE.BoxGeometry(0.12, 0.09, 0.29), shoe, 0, 0.0, 0.05, foot);
+    mesh(new THREE.BoxGeometry(0.125, 0.025, 0.3), sock, 0, -0.045, 0.05, foot);
+    return { hip, knee, foot, side };
+  });
+  mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.3, 20), jersey, 0, HIP_Y - 0.04, 0, body).scale.z = 0.75;
+  mesh(new THREE.CylinderGeometry(0.205, 0.205, 0.05, 20), trim, 0, HIP_Y + 0.1, 0, body).scale.z = 0.76;
+
+  const spine = new THREE.Group(); spine.position.y = HIP_Y + 0.05; body.add(spine);
+  const torso = mesh(cap(0.17, 0.36), jersey, 0, 0.3, 0, spine); torso.scale.set(1.3, 1, 0.78);
+  const jerseyTex = canvasTex(256, 256, (g, w, h) => {
+    g.clearRect(0, 0, w, h); g.fillStyle = '#1d2f8c'; g.textAlign = 'center';
+    g.font = '40px Anton, Impact, sans-serif'; g.fillText('HOOPS', w / 2, 52);
+    g.font = '170px Anton, Impact, sans-serif'; g.fillText('23', w / 2, 230);
+  });
+  const numMat = new THREE.MeshBasicMaterial({ map: jerseyTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.26), numMat); back.position.set(0, 0.34, -0.137); back.rotation.y = Math.PI; spine.add(back);
+  const front = new THREE.Mesh(new THREE.PlaneGeometry(0.17, 0.17), numMat); front.position.set(0, 0.36, 0.137); spine.add(front);
+  mesh(new THREE.TorusGeometry(0.1, 0.012, 6, 20), trim, 0, 0.6, 0.02, spine).rotation.x = Math.PI / 2 + 0.25;
+  mesh(new THREE.CylinderGeometry(0.052, 0.058, 0.12, 12), skin, 0, 0.64, 0, spine);
+  const head = new THREE.Group(); head.position.y = 0.79; spine.add(head);
+  mesh(new THREE.SphereGeometry(0.112, 24, 18), skin, 0, 0, 0, head).scale.set(0.92, 1.12, 1);
+  const hairCap = mesh(new THREE.SphereGeometry(0.116, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), hair, 0, 0.02, -0.006, head);
+  hairCap.scale.set(0.95, 1.1, 1.02);
+  mesh(new THREE.TorusGeometry(0.106, 0.013, 6, 24), sock, 0, 0.04, 0, head).rotation.x = Math.PI / 2;
+  for (const s of [-1, 1]) {
+    mesh(new THREE.SphereGeometry(0.025, 10, 8), skin, 0.1 * s, 0, 0, head);
+    mesh(new THREE.SphereGeometry(0.011, 8, 6), hair, 0.04 * s, 0.01, 0.098, head);
+  }
+  mesh(new THREE.SphereGeometry(0.022, 10, 8), skin, 0, -0.02, 0.11, head);
+
+  const L1 = 0.30, L2 = 0.30, DOWN = new V(0, -1, 0);
+  const arms = [-1, 1].map(side => {           // side -1 = right arm (shooting hand), +1 = left
+    const sh = new THREE.Group(); sh.position.set(0.25 * side, 0.52, 0); spine.add(sh);
+    mesh(new THREE.SphereGeometry(0.075, 14, 10), jersey, 0, 0, 0, sh).scale.set(1, 0.8, 1);
+    mesh(cap(0.052, 0.2), skin, 0, -0.15, 0, sh);
+    const el = new THREE.Group(); el.position.y = -L1; sh.add(el);
+    mesh(cap(0.044, 0.2), skin, 0, -0.14, 0, el);
+    mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.05, 12), sock, 0, -0.22, 0, el);
+    mesh(new THREE.SphereGeometry(0.056, 12, 10), skin, 0, -L2, 0, el).scale.set(0.8, 1.15, 0.6);
+    return { sh, el, side };
+  });
+  const tmpA = new V(), tmpB = new V(), tmpC = new V(), tmpQ = new THREE.Quaternion();
+  function solveArm(arm, targetWorld) {
+    const t = spine.worldToLocal(tmpA.copy(targetWorld));
+    const s = arm.sh.position;
+    const d = tmpB.copy(t).sub(s);
+    const dist = clamp(d.length(), 0.1, L1 + L2 - 0.002);
+    const dir = d.normalize();
+    const hint = tmpC.set(0.35 * arm.side, -1, 0.25).normalize();
+    const b = hint.sub(dir.clone().multiplyScalar(hint.dot(dir))).normalize();
+    const a = Math.acos(clamp((L1 * L1 + dist * dist - L2 * L2) / (2 * L1 * dist), -1, 1));
+    const u = dir.clone().multiplyScalar(Math.cos(a)).add(b.multiplyScalar(Math.sin(a)));
+    arm.sh.quaternion.setFromUnitVectors(DOWN, u);
+    const elbow = s.clone().addScaledVector(u, L1);
+    const f = s.clone().addScaledVector(dir, dist).sub(elbow).normalize();
+    f.applyQuaternion(tmpQ.copy(arm.sh.quaternion).invert());
+    arm.el.quaternion.setFromUnitVectors(DOWN, f);
+  }
+
+  // pose: crouch k (0..1), jump height, ball/hand positions in player space
+  function legHeight(k) { const a = 0.8 * k, s = a - 1.5 * k; return LEG * Math.cos(a) + LEG * Math.cos(s); }
+  const H0 = legHeight(0);
+  const BALL_REST = new V(0, 1.12, 0.34), BALL_SET = new V(0, 2.02, 0.17), BALL_REL = new V(0, 2.42, 0.3);
+  const JUMP = 0.34, T_EXT = 0.12, T_AIR = 0.62, T_REL = 0.3;
+  const jumpAt = t => { const u = (t - T_EXT) / T_AIR; return u > 0 && u < 1 ? 4 * JUMP * u * (1 - u) : 0; };
+
+  const pose = { k: 0, jump: 0, hold: 0, armsDown: 0, walk: 0, walkAmt: 0 };
+  const ballLocal = new V(), handR = new V(), handL = new V();
+  function applyPose() {
+    const k = pose.k, a1 = 0.8 * k, s = a1 - 1.5 * k;
+    body.position.y = legHeight(k) - H0 + pose.jump;
+    body.position.z = -(LEG * Math.sin(a1) + LEG * Math.sin(s)) * 0.9;
+    spine.rotation.x = 0.32 * k;
+    for (const L of legs) {
+      const sw = Math.sin(pose.walk + (L.side > 0 ? Math.PI : 0)) * 0.55 * pose.walkAmt;
+      L.hip.rotation.x = -a1 - sw;
+      L.knee.rotation.x = 1.5 * k + Math.max(0, -Math.cos(pose.walk + (L.side > 0 ? Math.PI : 0))) * 0.9 * pose.walkAmt;
+      L.foot.rotation.x = -(L.hip.rotation.x + L.knee.rotation.x);
+      if (pose.jump > 0.02) { L.foot.rotation.x += 0.5; }
+    }
+    // ball position in player space
+    const h = pose.hold;
+    if (h <= 1) ballLocal.copy(BALL_REST).lerp(BALL_SET, smooth(h)); else ballLocal.copy(BALL_SET).lerp(BALL_REL, smooth(h - 1));
+    ballLocal.y += body.position.y; ballLocal.z += body.position.z * 0.5;
+    const set = Math.min(1, h);
+    handR.set(lerp(-0.135, -0.03, set), lerp(0, -0.1, set), lerp(-0.02, -0.08, set)).add(ballLocal);
+    handL.set(lerp(0.135, 0.125, set), 0, lerp(-0.02, 0, set)).add(ballLocal);
+    if (pose.armsDown > 0) {
+      const d = smooth(pose.armsDown);
+      handR.lerp(tmpA.set(-0.33, 0.95 + body.position.y, 0.08), d);
+      handL.lerp(tmpA.set(0.33, 0.95 + body.position.y, 0.08), d);
+    }
+    player.updateMatrixWorld(true);
+    solveArm(arms[0], player.localToWorld(handR.clone()));
+    solveArm(arms[1], player.localToWorld(handL.clone()));
+    head.rotation.x = -0.15 - 0.25 * Math.min(1, h);
+  }
+
+  // ---------- game state ----------
+  const spotPos = new V(0, 0, 5.2);       // where the player stands
+  const playerTarget = spotPos.clone();
+  let phase = 'ready';                     // move | ready | aim | windup | flight
+  let animT = 0, aim = null, shot = null;
+  let stats = { points: 0, made: 0, att: 0, streak: 0 };
+  let best = 0; try { best = +localStorage.getItem('hoopshot3d-best') || 0; } catch (e) {}
+  let guide = 2; const guideNames = ['Off', 'Short', 'Full'];
+  let sound = true, mode = 'practice', clock = 60, view = 'rear';
+
+  player.position.copy(spotPos);
+  function hoopDir(from) { return tmpA.set(RIM.x - from.x, 0, RIM.z - from.z).normalize().clone(); }
+  function faceHoop() { const d = hoopDir(player.position); player.rotation.y = Math.atan2(d.x, d.z); }
+  function distToRim(p) { return Math.hypot(p.x - RIM.x, p.z - RIM.z); }
+  function isThree(p) { return Math.abs(p.x) > 6.6 && p.z < 1.41 ? true : distToRim(p) > 6.75; }
+  function releasePoint() {
+    const local = BALL_REL.clone(); local.y += jumpAt(T_REL); local.z += 0;
+    return player.localToWorld(local);
+  }
+
+  // ---------- input ----------
+  const app = $('app');
+  gl.addEventListener('pointerdown', e => {
+    initAudio();
+    if (phase !== 'ready' || !$('overlay').hidden) return;
+    aim = { sx: e.clientX, sy: e.clientY, cx: e.clientX, cy: e.clientY };
+    gl.setPointerCapture(e.pointerId);
+    phase = 'aim'; app.classList.add('aiming');
+  });
+  gl.addEventListener('pointermove', e => { if (aim) { aim.cx = e.clientX; aim.cy = e.clientY; } });
+  gl.addEventListener('pointerup', () => {
+    if (!aim) return;
+    const a = aimVelocity(); aim = null; app.classList.remove('aiming');
+    if (a.power < 0.05) { phase = 'ready'; return; }
+    shot = { v: a.v, t: 0, scored: false, touched: false, rimHit: false, maxY: 0, cross: null, rest: 0, endIn: null,
+             pts: isThree(player.position) ? 3 : 2, from: player.position.clone() };
+    phase = 'windup'; animT = 0;
+  });
+  gl.addEventListener('pointercancel', () => { aim = null; app.classList.remove('aiming'); if (phase === 'aim') phase = 'ready'; });
+
+  function aimVelocity() {
+    const m = Math.min(innerWidth, innerHeight);
+    const power = clamp((aim.cy - aim.sy) / (0.55 * m), 0, 1);
+    const yaw = clamp(-(aim.cx - aim.sx) / m * 0.7, -0.6, 0.6);
+    return Object.assign(velocityFor(power, yaw), { power, yaw });
+  }
+  function velocityFor(power, yaw) {
+    const speed = 4.5 + power * 6;
+    const rp = releasePoint();
+    const d = hoopDir(rp), right = new V(-d.z, 0, d.x);
+    const sd = d.multiplyScalar(Math.cos(yaw)).addScaledVector(right, Math.sin(yaw));
+    return { v: new V(sd.x * Math.cos(ARC) * speed, Math.sin(ARC) * speed, sd.z * Math.cos(ARC) * speed), start: rp };
+  }
+
+  // ---------- physics ----------
+  function hitPoint(px, py, pz, r, e) {
+    const p = ball.p, dx = p.x - px, dy = p.y - py, dz = p.z - pz;
+    const d = Math.hypot(dx, dy, dz), min = BALL_R + r;
+    if (d >= min || d < 1e-6) return 0;
+    const nx = dx / d, ny = dy / d, nz = dz / d;
+    p.set(px + nx * min, py + ny * min, pz + nz * min);
+    const vn = ball.v.x * nx + ball.v.y * ny + ball.v.z * nz;
+    if (vn >= 0) return 0;
+    ball.v.x -= (1 + e) * vn * nx; ball.v.y -= (1 + e) * vn * ny; ball.v.z -= (1 + e) * vn * nz;
+    ball.v.multiplyScalar(0.985);
+    return -vn;
+  }
+  function step(dt) {
+    const p = ball.p, v = ball.v, prevY = p.y;
+    v.y -= G * dt; p.addScaledVector(v, dt);
+
+    // rim: nearest point on the rim circle
+    let hx = p.x - RIM.x, hz = p.z - RIM.z; const hl = Math.hypot(hx, hz) || 1e-6;
+    const rimHit = hitPoint(RIM.x + hx / hl * RIM_R, RIM_Y, RIM.z + hz / hl * RIM_R, TUBE, 0.55);
+    if (rimHit) { shot.touched = shot.rimHit = true; if (rimHit > 0.6) tone('rim', rimHit); }
+    for (const b of BOXES) {
+      const h = hitPoint(clamp(p.x, b[0], b[3]), clamp(p.y, b[1], b[4]), clamp(p.z, b[2], b[5]), 0, b[6]);
+      if (h) { shot.touched = true; if (h > 0.6) tone('board', h); }
+    }
+    // net slows the ball and keeps it inside once it drops through
+    if (p.y < RIM_Y && p.y > RIM_Y - NET_D && hl < RIM_R) {
+      v.x *= 0.975; v.z *= 0.975; v.y *= 0.993;
+      if (hl > RIM_R - BALL_R * 0.55) { const k = (RIM_R - BALL_R * 0.55) / hl; p.x = RIM.x + hx * k; p.z = RIM.z + hz * k; }
+    }
+    if (p.y < BALL_R) {
+      p.y = BALL_R;
+      if (v.y < 0) { if (v.y < -1) tone('bounce', -v.y); v.y = -v.y * 0.72; }
+      v.x *= 0.985; v.z *= 0.985;
+      if (Math.abs(v.y) < 0.4) v.y = 0;
+    }
+    shot.maxY = Math.max(shot.maxY, p.y);
+    if (prevY >= RIM_Y && p.y < RIM_Y && v.y < 0) {
+      if (hl < RIM_R - 0.03 && !shot.scored) scored();
+      else if (!shot.cross) shot.cross = p.clone();
+    }
+  }
+
+  // ---------- shot outcomes ----------
+  function scored() {
+    shot.scored = true;
+    const swish = !shot.touched;
+    const pts = shot.pts + (swish ? 1 : 0);
+    stats.made++; stats.streak++; stats.points += pts;
+    netKick = 1; tone('swish');
+    const label = swish ? 'SWISH! +' + pts : (shot.pts === 3 ? 'THREE! +3' : 'BUCKET! +2');
+    banner(stats.streak >= 3 ? label + ' · ' + stats.streak + ' IN A ROW' : label, swish ? 'var(--good)' : 'var(--led)');
+    coach('good', swish ? 'Nothing but net' : 'Good shot', swish
+      ? 'Clean through the middle. Remember how far you pulled.'
+      : 'It went in. Hit the middle of the rim and it drops through without touching.');
+    if (stats.points > best) { best = stats.points; try { localStorage.setItem('hoopshot3d-best', best); } catch (e) {} }
+    hud();
+  }
+  function endShot() {
+    if (!shot.scored) {
+      stats.streak = 0;
+      const d = hoopDir(shot.from), right = new V(-d.z, 0, d.x);
+      let msg;
+      if (shot.maxY < RIM_Y) msg = ['Short', 'It never got up to the rim. Pull down further for more power.'];
+      else if (!shot.cross) msg = ['Way long', 'It flew over the hoop. Use a shorter pull.'];
+      else {
+        const off = shot.cross.clone().sub(RIM), fwd = off.dot(d), side = off.dot(right);
+        if (shot.rimHit && Math.hypot(fwd, side) < 0.42) msg = ['Rimmed out', 'So close. Change your pull by just a hair.'];
+        else if (Math.abs(side) > Math.abs(fwd) && Math.abs(side) > 0.18) msg = side > 0
+          ? ['Missed right', 'Seen from behind you, it went right. Pull a little more to the right to send it left.']
+          : ['Missed left', 'Seen from behind you, it went left. Pull a little more to the left to send it right.'];
+        else if (fwd < 0) msg = ['Short', 'It came down in front of the rim. Pull down a little more.'];
+        else msg = ['Long', 'It came down past the rim. Ease off the pull a little.'];
+      }
+      coach('bad', msg[0], msg[1]); banner(msg[0].toUpperCase(), 'var(--bad)');
+    } else {
+      // a make moves you to a new spot on the floor
+      const a = (Math.random() * 2 - 1) * 1.25, dist = 2.8 + Math.random() * 4.9;
+      playerTarget.set(clamp(Math.sin(a) * dist, -6.9, 6.9), 0, Math.max(0.3, Math.cos(a) * dist));
+    }
+    shot = null; hud();
+    phase = 'move';
+  }
+
+  // ---------- camera rigs ----------
+  const camPos = new V(0, 3, 10), camLook = new V(0, 2, 0), wantPos = new V(), wantLook = new V();
+  function cameraTarget() {
+    const S = player.position, d = hoopDir(S), right = new V(-d.z, 0, d.x);
+    const mid = new V((S.x + RIM.x) / 2, 0, (S.z + RIM.z) / 2), span = distToRim(S);
+    const portrait = innerWidth < innerHeight;
+    switch (view) {
+      case 'front':
+        wantPos.set(RIM.x + right.x * -1.4, 4.7, RIM.z - 4.2);
+        wantLook.copy(S).setY(1.3);
+        break;
+      case 'side':
+        wantPos.copy(mid).addScaledVector(right, -(span * 0.85 + (portrait ? 8 : 5))).setY(2.4);
+        wantLook.copy(mid).setY(1.9);
+        break;
+      case 'high':
+        wantPos.copy(S).addScaledVector(d, -5).addScaledVector(right, 4).setY(portrait ? 12 : 9.5);
+        wantLook.copy(mid).setY(0.8);
+        break;
+      case 'ball':
+        if (phase === 'flight' && ball.v.lengthSq() > 0.5 && !(shot && shot.scored && ball.p.y < 2)) {
+          const vh = new V(ball.v.x, 0, ball.v.z).normalize();
+          wantPos.copy(ball.p).addScaledVector(vh, -1.8).setY(Math.max(1.2, ball.p.y + 0.5));
+          wantLook.copy(ball.p).lerp(RIM, 0.5);
+        } else {
+          wantPos.copy(S).addScaledVector(d, -1.7).addScaledVector(right, 0.55).setY(2.5);
+          wantLook.copy(RIM).setY(2.6);
+        }
+        break;
+      default: // behind the shooter, like the broadcast "shot view"
+        wantPos.copy(S).addScaledVector(d, -(portrait ? 5.5 : 4.2)).setY(portrait ? 3.4 : 2.9);
+        wantLook.copy(S).lerp(RIM, 0.62).setY(2.3);
+        if (phase === 'flight') wantLook.lerp(ball.p, 0.25);
+    }
+  }
+
+  // ---------- trajectory dots ----------
+  const DOTS = 60;
+  const dots = new THREE.InstancedMesh(new THREE.SphereGeometry(0.045, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }), DOTS);
+  dots.frustumCulled = false; scene.add(dots);
+  function drawDots(a) {
+    let n = 0;
+    if (a && guide) {
+      const maxT = guide === 2 ? 3 : 0.32, dt = 1 / 28;
+      const p = a.start.clone(), v = a.v.clone();
+      let wasAbove = false;
+      for (let t = 0; t < maxT && n < DOTS; t += dt) {
+        v.y -= G * dt; p.addScaledVector(v, dt);
+        if (p.y > RIM_Y) wasAbove = true;
+        if (p.y < 0 || (wasAbove && p.y < RIM_Y - 0.25)) break;
+        const s = guide === 2 ? 1 : 1 - t / maxT * 0.6;
+        m4.makeScale(s, s, s).setPosition(p); dots.setMatrixAt(n++, m4);
+      }
+    }
+    dots.count = n; dots.instanceMatrix.needsUpdate = true;
+  }
+
+  // ---------- main loop ----------
+  let last = performance.now(), acc = 0;
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+
+    // player state machine
+    if (phase === 'move') {
+      const to = tmpB.copy(playerTarget).sub(player.position); const dist = to.length();
+      pose.k = lerp(pose.k, 0, 0.2); pose.jump = 0;
+      pose.hold = Math.max(0, pose.hold - dt * 3); pose.armsDown = Math.max(0, pose.armsDown - dt * 2.5);
+      if (dist > 0.03) {
+        player.position.addScaledVector(to.normalize(), Math.min(dist, dt * 4.2));
+        const d = to; player.rotation.y = Math.atan2(d.x, d.z);
+        pose.walk += dt * 11; pose.walkAmt = Math.min(1, pose.walkAmt + dt * 5);
+      } else {
+        pose.walkAmt = Math.max(0, pose.walkAmt - dt * 5);
+        const want = Math.atan2(hoopDir(player.position).x, hoopDir(player.position).z);
+        let dr = want - player.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr));
+        player.rotation.y += dr * Math.min(1, dt * 10);
+        if (pose.walkAmt === 0 && Math.abs(dr) < 0.02 && pose.hold === 0 && pose.armsDown === 0) { faceHoop(); phase = 'ready'; updateRange(); }
+      }
+      ball.held = true;
+    } else if (phase === 'ready' || phase === 'aim') {
+      const a = phase === 'aim' && aim ? aimVelocity() : null;
+      pose.k = lerp(pose.k, a ? 0.18 + a.power * 0.42 : 0.05 + Math.sin(now / 600) * 0.02, 1 - Math.exp(-dt * 12));
+      pose.hold = lerp(pose.hold, a ? 1 : 0, 1 - Math.exp(-dt * 10));
+      pose.jump = 0; pose.armsDown = 0; pose.walkAmt = 0;
+      ball.held = true;
+      drawDots(a); drawPull(a);
+    } else if (phase === 'windup') {
+      animT += dt;
+      const t = animT;
+      pose.k = lerp(pose.k, 0, Math.min(1, t / T_EXT));
+      pose.jump = jumpAt(t);
+      pose.hold = 1 + Math.min(1, t / T_REL);
+      if (t >= T_REL) {                    // release
+        pose.hold = 2; applyPose();
+        ball.p.copy(releasePoint()); ball.v.copy(shot.v); ball.held = false;
+        const d = hoopDir(ball.p); ball.spin.set(-d.z, 0, d.x).multiplyScalar(-14); // backspin
+        stats.att++; hud(); tone('throw');
+        phase = 'flight';
+      }
+      drawDots(null);
+    }
+    if (phase !== 'ready' && phase !== 'aim') { drawDots(null); drawPull(null); }
+    if (phase === 'flight') {
+      animT += dt;
+      pose.jump = jumpAt(animT); pose.k = animT > T_EXT + T_AIR ? lerp(pose.k, 0.25, 0.2) : 0;
+      if (animT > T_EXT + T_AIR + 0.15) pose.k = lerp(pose.k, 0, 0.1);
+      if (animT > 1.3) pose.armsDown = Math.min(1, pose.armsDown + dt * 2);
+      acc += dt;
+      while (acc >= STEP) { step(STEP); acc -= STEP; }
+      shot.t += dt;
+      const onFloor = ball.p.y <= BALL_R + 0.001 && ball.v.y === 0;
+      if (onFloor) ball.spin.set(ball.v.z, 0, -ball.v.x).multiplyScalar(1 / BALL_R);
+      shot.rest = onFloor && Math.hypot(ball.v.x, ball.v.z) < 0.6 ? shot.rest + dt : 0;
+      if (shot.scored && shot.endIn === null && ball.p.y < RIM_Y - 0.6) shot.endIn = 1.1;
+      if (shot.endIn !== null) shot.endIn -= dt;
+      const gone = Math.abs(ball.p.x) > 14 || ball.p.z > 18 || ball.p.z < -6;
+      if ((shot.endIn !== null && shot.endIn <= 0) || shot.rest > 0.3 || gone || shot.t > 7) endShot();
+    } else acc = 0;
+
+    applyPose();
+    if (ball.held) ball.p.copy(player.localToWorld(ballLocal.clone()));
+    ballMesh.position.copy(ball.p);
+    if (!ball.held) {
+      const w = ball.spin.length();
+      if (w > 1e-3) ballMesh.rotateOnWorldAxis(tmpC.copy(ball.spin).divideScalar(w), w * dt);
+    }
+    updateNet(dt);
+
+    if (mode === 'challenge' && $('overlay').hidden) {
+      clock -= dt;
+      if (clock <= 0) { clock = 0; finishChallenge(); }
+      $('clock').textContent = Math.ceil(clock);
+    }
+
+    cameraTarget();
+    const f = 1 - Math.exp(-dt * (view === 'ball' ? 5 : 3.2));
+    camPos.lerp(wantPos, f); camLook.lerp(wantLook, f);
+    camera.position.copy(camPos); camera.lookAt(camLook);
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- 2D pull indicator ----------
+  let fxDirty = false;
+  function drawPull(a) {
+    if (!a && !fxDirty) return;
+    fxDirty = !!a;
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    fctx.clearRect(0, 0, fx.width, fx.height);
+    if (!a || !aim) return;
+    fctx.strokeStyle = 'rgba(241,237,228,.6)'; fctx.lineWidth = 2; fctx.setLineDash([5, 7]);
+    fctx.beginPath(); fctx.moveTo(aim.sx, aim.sy); fctx.lineTo(aim.cx, aim.cy); fctx.stroke(); fctx.setLineDash([]);
+    fctx.fillStyle = 'rgba(241,237,228,.8)'; fctx.beginPath(); fctx.arc(aim.sx, aim.sy, 6, 0, 7); fctx.fill();
+    fctx.strokeStyle = 'rgba(0,0,0,.35)'; fctx.lineWidth = 7;
+    fctx.beginPath(); fctx.arc(aim.cx, aim.cy, 30, -Math.PI / 2, Math.PI * 1.5); fctx.stroke();
+    fctx.strokeStyle = a.power > 0.95 ? '#ff6b5a' : '#ffb43d'; fctx.lineWidth = 5;
+    fctx.beginPath(); fctx.arc(aim.cx, aim.cy, 30, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * a.power); fctx.stroke();
+    fctx.fillStyle = '#f1ede4'; fctx.font = '600 15px "Barlow Condensed", sans-serif'; fctx.textAlign = 'center';
+    const deg = Math.round(a.yaw * 180 / Math.PI);
+    fctx.fillText(Math.round(a.power * 100) + '% power' + (deg ? ' · ' + Math.abs(deg) + '° ' + (deg > 0 ? 'right' : 'left') : ''), aim.cx, aim.cy + 52);
+  }
+
+  // ---------- HUD ----------
+  function hud() {
+    $('score').textContent = stats.points; $('made').textContent = stats.made + '/' + stats.att;
+    $('streak').textContent = stats.streak; $('best').textContent = best;
+  }
+  function updateRange() {
+    const d = distToRim(player.position);
+    $('range').textContent = d.toFixed(1) + ' m' + (isThree(player.position) ? ' · 3' : '');
+  }
+  function coach(kind, tag, text) { $('coach').className = 'coach ' + kind; $('coachTag').textContent = tag; $('coachText').textContent = text; }
+  function banner(text, color) {
+    const b = $('banner'); b.textContent = text; b.style.color = color;
+    b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
+  }
+
+  const viewBtns = [...document.querySelectorAll('.views button')];
+  function setView(v) { view = v; viewBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.view === v)); }
+  viewBtns.forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+  addEventListener('keydown', e => {
+    const i = '12345'.indexOf(e.key);
+    if (i >= 0) setView(viewBtns[i].dataset.view);
+    if (e.key === 'v' || e.key === 'c') setView(viewBtns[(viewBtns.findIndex(b => b.dataset.view === view) + 1) % viewBtns.length].dataset.view);
+  });
+  $('guideBtn').addEventListener('click', () => {
+    guide = (guide + 2) % 3; $('guideBtn').innerHTML = 'Aim guide: <b>' + guideNames[guide] + '</b>';
+    if (guide === 0) coach('', 'No guide', 'Shooting on feel now. Watch the power ring instead.');
+  });
+  $('soundBtn').addEventListener('click', () => { sound = !sound; $('soundBtn').innerHTML = 'Sound: <b>' + (sound ? 'On' : 'Off') + '</b>'; });
+  $('modeBtn').addEventListener('click', () => mode === 'practice' ? startChallenge() : startPractice());
+  $('againBtn').addEventListener('click', startChallenge);
+  $('practiceBtn').addEventListener('click', startPractice);
+
+  function resetRound() {
+    stats = { points: 0, made: 0, att: 0, streak: 0 }; shot = null; aim = null;
+    playerTarget.set(0, 0, 5.2); phase = 'move'; hud();
+  }
+  function startChallenge() {
+    mode = 'challenge'; clock = 60; resetRound();
+    $('overlay').hidden = true; $('clockCell').hidden = false; $('modeBtn').textContent = 'Back to practice';
+    coach('', '60-second challenge', 'Score as many points as you can. Threes count 3, a swish adds 1.');
+  }
+  function startPractice() {
+    mode = 'practice'; resetRound();
+    $('overlay').hidden = true; $('clockCell').hidden = true; $('modeBtn').textContent = '60s challenge';
+    coach('', 'Practice', 'Take your time. A miss keeps you on the same spot so you can adjust.');
+  }
+  function finishChallenge() {
+    const pct = stats.att ? Math.round(stats.made / stats.att * 100) : 0;
+    $('ovScore').textContent = stats.points;
+    $('ovText').textContent = stats.made + ' of ' + stats.att + ' shots (' + pct + '%) · Best ' + best;
+    $('overlay').hidden = false;
+    if (phase !== 'move') { shot = null; aim = null; phase = 'move'; }
+  }
+
+  // ---------- sound ----------
+  let ac = null;
+  function initAudio() { if (!ac) try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  function tone(kind, strength) {
+    if (!sound || !ac) return;
+    const t = ac.currentTime, vol = Math.min(1, (strength || 4) / 7);
+    const g = ac.createGain(); g.connect(ac.destination);
+    if (kind === 'swish' || kind === 'throw') {
+      const len = kind === 'swish' ? 0.35 : 0.12;
+      const buf = ac.createBuffer(1, ac.sampleRate * len, ac.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+      const src = ac.createBufferSource(); src.buffer = buf;
+      const flt = ac.createBiquadFilter(); flt.type = 'bandpass'; flt.frequency.value = kind === 'swish' ? 3000 : 1200;
+      src.connect(flt); flt.connect(g); g.gain.setValueAtTime(kind === 'swish' ? 0.5 : 0.12, t); src.start(t);
+      return;
+    }
+    const o = ac.createOscillator();
+    if (kind === 'rim') { o.type = 'triangle'; o.frequency.setValueAtTime(520, t); g.gain.setValueAtTime(0.25 * vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.35); }
+    else if (kind === 'board') { o.type = 'square'; o.frequency.setValueAtTime(140, t); g.gain.setValueAtTime(0.12 * vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12); }
+    else { o.type = 'sine'; o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(50, t + 0.15); g.gain.setValueAtTime(0.5 * vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18); }
+    o.connect(g); o.start(t); o.stop(t + 0.4);
+  }
+
+  // ---------- resize / boot ----------
+  function resize() {
+    const w = gl.clientWidth, h = gl.clientHeight, dpr = Math.min(devicePixelRatio || 1, 2);
+    renderer.setPixelRatio(dpr); renderer.setSize(w, h, false);
+    fx.width = w * dpr; fx.height = h * dpr;
+    camera.aspect = w / h; camera.fov = w < h ? 68 : 50; camera.updateProjectionMatrix();
+  }
+  addEventListener('resize', resize);
+  resize(); faceHoop(); applyPose(); updateRange(); hud();
+  cameraTarget(); camPos.copy(wantPos); camLook.copy(wantLook);
+  // test hook: runs one shot's physics instantly from the current spot without touching the score
+  window.__hoop = {
+    get phase() { return phase; }, setView, player,
+    simulate(power, yaw = 0) {
+      const keep = { stats: { ...stats }, best, held: ball.held, p: ball.p.clone(), v: ball.v.clone(), sound };
+      const a = velocityFor(power, yaw); sound = false;
+      shot = { t: 0, scored: false, touched: false, rimHit: false, maxY: 0, cross: null };
+      ball.p.copy(a.start); ball.v.copy(a.v);
+      for (let i = 0; i < 240 * 4 && !shot.scored; i++) step(STEP);
+      const r = { scored: shot.scored, swish: shot.scored && !shot.touched, maxY: shot.maxY, cross: shot.cross && shot.cross.toArray() };
+      shot = null; stats = keep.stats; best = keep.best; sound = keep.sound;
+      ball.held = keep.held; ball.p.copy(keep.p); ball.v.copy(keep.v); hud();
+      return r;
+    },
+  };
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
