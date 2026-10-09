@@ -131,12 +131,48 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
   .seg { overflow-x: auto; }
   .seg .lbl { display: none; }
   .seg button { flex: 1; padding: 7px 4px; font-size: 13px; }
-  .controls { top: 158px; flex-direction: row; flex-wrap: wrap; justify-content: flex-end; left: 16px; }
-  .controls .btn { padding: 7px 8px; font-size: 12px; }
   .keys { display: none; }
   .left { width: auto; min-width: 0; right: 120px; }
   .coach { font-size: 15px; }
   #hitCard { width: 72px; height: 72px; }
+}
+/* small screens: settings fold into one Menu button so the view stays clear */
+.menu-btn { display: none; }
+@media (max-width: 1000px), (max-height: 520px) {
+  .menu-btn { display: inline-block; position: absolute; top: 8px; right: 8px; z-index: 3; padding: 9px 12px; }
+  .controls { display: none; top: 50px; right: 8px; left: auto; flex-direction: column; align-items: stretch; z-index: 3;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px; max-height: calc(100% - 60px); overflow-y: auto; }
+  .controls.open { display: flex; }
+  .controls .btn { padding: 9px 12px; font-size: 13px; text-align: left; }
+  .coach { transition: opacity .6s; }
+  .coach.quiet { opacity: 0; pointer-events: none; }
+}
+/* phone held sideways: thin edges, open middle */
+@media (max-height: 520px) {
+  .board { top: 6px; left: 8px; transform: none; padding: 2px; }
+  .cell { padding: 1px 6px; }
+  .num { font-size: 16px; }
+  .lbl { font-size: 8px; letter-spacing: .1em; }
+  .dock { top: 50%; bottom: auto; left: 8px; right: auto; transform: translateY(-38%); flex-direction: row; align-items: flex-start; gap: 4px; }
+  .seg { flex-direction: column; padding: 3px; overflow: visible; }
+  .seg .lbl { display: none; }
+  .seg button { flex: none; padding: 6px 8px; font-size: 12px; }
+  .left { top: 44px; bottom: auto; left: 50%; right: auto; transform: translateX(-50%); width: min(420px, calc(100% - 300px)); min-width: 200px; }
+  .left .card { display: none; }
+  .coach { font-size: 13px; padding: 6px 10px; }
+  .keys { display: none; }
+  .touch { right: 8px; bottom: 8px; gap: 8px; }
+  .round { width: 56px; height: 56px; font-size: 10px; letter-spacing: .02em; padding: 0; }
+  .round.fire { width: 78px; height: 78px; }
+  .overlay { place-items: start center; overflow-y: auto; }
+  .endcard { gap: 6px; padding-block: 8px; }
+  .endcard h2 { font-size: 28px; }
+  .endcard .big { font-size: 40px; }
+  .endcard p, .endcard ul { font-size: 13px; }
+  .endcard ul { gap: 3px; padding-block: 8px; }
+  .endcard button { padding: 9px 16px; font-size: 15px; }
+  .locker-in { padding-block: 4px; }
+  .locker-head h2 { font-size: 28px; }
 }
 </style>
 </head>
@@ -155,7 +191,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     <div class="cell" id="clockCell" hidden><span class="lbl">Clock</span><span class="num plain" id="clock">90</span></div>
   </div>
 
-  <div class="controls">
+  <button class="btn menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="controls">Menu</button>
+  <div class="controls" id="controls">
     <span class="online" id="online" hidden title="People playing Forest Range right now"><i></i><b id="onlineNum">1</b>&nbsp;online<span id="onlineHunting"></span></span>
     <a class="btn" href="../">&larr; Home</a>
     <button class="btn" id="sceneBtn" type="button">Scenery: <b id="sceneName">Pine Forest</b></button>
@@ -276,6 +313,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
   let gun = GUNS[5], gunIndex = 5, zeroAngle = 0;
   const zeroAngleFor = g => Math.atan((g.sightH + 0.5 * G * (g.zero / g.v) ** 2) / g.zero);
   const EYE = new V(0, 1.45, 0);
+  const LITE = matchMedia('(pointer: coarse)').matches;   // phones and tablets: lighter forest, lower resolution
+  const DETAIL = LITE ? 0.7 : 1, MAX_DPR = LITE ? 1.5 : 2;
 
   // ---------- renderer / scene ----------
   const gl = $('gl'), fx = $('fx'), fctx = fx.getContext('2d');
@@ -295,7 +334,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
   const hemi = new THREE.HemisphereLight(0xd8ecff, 0x3d4a26, 0.45); scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff0d0, 1.25);
   sun.position.set(-50, 90, 30); sun.target.position.set(0, 0, -40);
-  sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  sun.castShadow = true; sun.shadow.mapSize.set(LITE ? 1024 : 2048, LITE ? 1024 : 2048);
   Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 10, far: 250 });
   sun.shadow.bias = -0.0005;
   scene.add(sun, sun.target);
@@ -442,8 +481,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
       byType[type].push({ matrix: mtx, seed: Math.random() });
     };
     // deep forest, a dense band along the tree line, and lone trees out on the far meadow
-    for (let n = 0; n < 1700;) { const a = rand(0, 6.28), r = Math.sqrt(Math.random()) * 650, x = Math.cos(a) * r, z = Math.sin(a) * r - 140; if (inClearing(x, z) || Math.hypot(x, z) < 12) continue; place(x, z, rand(0.75, 1.7)); n++; }
-    for (let n = 0; n < 650;) { const z = -rand(-5, 345), side = Math.random() < 0.5 ? -1 : 1, x = side * (14 - z * 0.42 + rand(0.5, 22)); if (inClearing(x, z)) continue; place(x, z, rand(0.7, 1.5)); n++; }
+    for (let n = 0; n < 1700 * DETAIL;) { const a = rand(0, 6.28), r = Math.sqrt(Math.random()) * 650, x = Math.cos(a) * r, z = Math.sin(a) * r - 140; if (inClearing(x, z) || Math.hypot(x, z) < 12) continue; place(x, z, rand(0.75, 1.7)); n++; }
+    for (let n = 0; n < 650 * DETAIL;) { const z = -rand(-5, 345), side = Math.random() < 0.5 ? -1 : 1, x = side * (14 - z * 0.42 + rand(0.5, 22)); if (inClearing(x, z)) continue; place(x, z, rand(0.7, 1.5)); n++; }
     for (let n = 0; n < 40; n++) { const z = -rand(70, 320), w = 14 - z * 0.42, x = (Math.random() < 0.5 ? -1 : 1) * rand(Math.max(26, w * 0.55), w - 2); if (!nearLane(x, z, 9)) place(x, z, rand(0.8, 1.3)); }
     for (const type of types) {
       const list = byType[type]; if (!list.length) continue;
@@ -462,8 +501,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     for (let i = 0; i < 90; i++) { const [x, z] = inField(); decor.rock.push({ matrix: M4(x, 0.15, z, rand(0.3, 1.1), undefined, undefined, rand(0.35, 0.7)), seed: Math.random() }); }
     for (let i = 0; i < 70; i++) { const [x, z, edge] = inField(); if (!edge && Math.random() < 0.6) continue; decor.log.push({ matrix: M4(x, 0.28, z, 1, rand(0, 6.28), 1, rand(0.8, 1.2), 1, Math.PI / 2), seed: Math.random() }); }
     for (let i = 0; i < 90; i++) { const [x, z] = inField(); decor.stump.push({ matrix: M4(x, 0.25, z, rand(0.7, 1.3)), seed: Math.random() }); }
-    if (S.ferns) for (let i = 0; i < 700; i++) { const [x, z] = inField(); decor.fern.push({ matrix: M4(x, 0.25, z, rand(0.6, 1.4), undefined, undefined, rand(0.4, 0.8)), seed: Math.random() }); }
-    const grassN = Math.round(5000 * (S.grassAmount ?? 1));
+    if (S.ferns) for (let i = 0; i < 700 * DETAIL; i++) { const [x, z] = inField(); decor.fern.push({ matrix: M4(x, 0.25, z, rand(0.6, 1.4), undefined, undefined, rand(0.4, 0.8)), seed: Math.random() }); }
+    const grassN = Math.round(5000 * DETAIL * (S.grassAmount ?? 1));
     for (let i = 0; i < grassN; i++) { const z = -rand(4, 200), w = 14 - z * 0.42, x = rand(-w - 10, w + 10); if (nearLane(x, z, 2.5)) continue; decor.grass.push({ matrix: M4(x, 0, z, rand(0.5, 1.1)), seed: Math.random() }); }
     if (S.mushrooms) for (let i = 0; i < 120; i++) { const [x, z] = inField(); decor.mush.push({ matrix: M4(x, 0, z, rand(0.6, 1.3)), seed: Math.random() }); }
     const bushGeo = new THREE.IcosahedronGeometry(1, 1), rockGeo = new THREE.DodecahedronGeometry(1, 0);
@@ -1000,25 +1039,30 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
   aimAt(paper[lane]);
 
   // ---------- input ----------
-  let drag = null;
+  // multi-touch: the first finger down aims; a quick tap with any finger fires, so you can aim and shoot at once
+  const touches = new Map();
+  let aimId = null;
   const sens = () => THREE.MathUtils.degToRad(camera.fov) / gl.clientHeight;
   gl.addEventListener('pointerdown', e => {
-    initAudio();
+    initAudio(); closeMenu();
     if (!$('overlay').hidden) return;
-    drag = { x: e.clientX, y: e.clientY, moved: 0, t: performance.now() };
-    gl.setPointerCapture(e.pointerId);
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY, moved: 0, t: performance.now() });
+    if (aimId === null) aimId = e.pointerId;
+    try { gl.setPointerCapture(e.pointerId); } catch (err) {}
   });
   gl.addEventListener('pointermove', e => {
-    if (!drag) return;
-    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-    drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy);
-    yaw -= dx * sens(); pitch = clamp(pitch - dy * sens(), -0.35, 0.45);
+    const d = touches.get(e.pointerId); if (!d) return;
+    const dx = e.clientX - d.x, dy = e.clientY - d.y;
+    d.x = e.clientX; d.y = e.clientY; d.moved += Math.abs(dx) + Math.abs(dy);
+    if (e.pointerId === aimId) { yaw -= dx * sens(); pitch = clamp(pitch - dy * sens(), -0.35, 0.45); }
   });
-  gl.addEventListener('pointerup', () => {
-    if (drag && drag.moved < 6 && performance.now() - drag.t < 350) fire();
-    drag = null;
-  });
-  gl.addEventListener('pointercancel', () => { drag = null; });
+  const lift = (e, cancelled) => {
+    const d = touches.get(e.pointerId); touches.delete(e.pointerId);
+    if (!cancelled && d && d.moved < 8 && performance.now() - d.t < 350) fire();
+    if (e.pointerId === aimId) aimId = touches.size ? touches.keys().next().value : null;
+  };
+  gl.addEventListener('pointerup', e => lift(e, false));
+  gl.addEventListener('pointercancel', e => lift(e, true));
   gl.addEventListener('wheel', e => { e.preventDefault(); stepZoom(e.deltaY < 0 ? 1 : -1); }, { passive: false });
   gl.addEventListener('contextmenu', e => e.preventDefault());
   addEventListener('keydown', e => {
@@ -1041,8 +1085,15 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     }
   });
   addEventListener('keyup', e => { if (e.key === 'Shift') holding = false; });
-  $('fireBtn').addEventListener('click', () => { initAudio(); fire(); });
-  $('reloadBtn').addEventListener('click', reload);
+  const press = (el, fn) => {
+    el.addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); fn(); });   // instant, even while another finger aims
+    el.addEventListener('click', e => { if (e.detail === 0) fn(); });                    // keyboard Enter/Space
+  };
+  press($('fireBtn'), fire); press($('reloadBtn'), reload);
+  // Menu button for small screens
+  const closeMenu = () => { $('controls').classList.remove('open'); $('menuBtn').setAttribute('aria-expanded', 'false'); };
+  $('menuBtn').addEventListener('click', () => { const open = $('controls').classList.toggle('open'); $('menuBtn').setAttribute('aria-expanded', open); });
+  $('controls').addEventListener('click', e => { if (e.target.closest('button')) closeMenu(); });
   const bb = $('breathBtn');
   bb.addEventListener('pointerdown', e => { e.preventDefault(); holding = true; bb.classList.add('held'); });
   for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) bb.addEventListener(ev, () => { holding = false; bb.classList.remove('held'); });
@@ -1426,7 +1477,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     if (level) { $('levelNum').textContent = level; $('killNum').textContent = kills + '/' + levelSpec(level).goal; $('clock').textContent = Math.ceil(clock); }
     $('soundBtn').innerHTML = 'Sound: <b>' + (sound ? 'On' : 'Off') + '</b>';
   }
-  function coach(kind, tag, text) { $('coach').className = 'coach ' + kind; $('coachTag').textContent = tag; $('coachText').textContent = text; }
+  let coachTimer = 0;
+  const smallLandscape = matchMedia('(max-height: 520px)');
+  function coach(kind, tag, text) {
+    $('coach').className = 'coach ' + kind; $('coachTag').textContent = tag; $('coachText').textContent = text;
+    clearTimeout(coachTimer);                // on a sideways phone the tip fades so it never blocks the view
+    if (smallLandscape.matches) coachTimer = setTimeout(() => $('coach').classList.add('quiet'), 4500);
+  }
   function popup(p, text, color) {
     const v = p.clone().project(camera);
     if (v.z > 1) return;
@@ -1456,7 +1513,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
   // ---------- scope / crosshair overlay ----------
   let rangeText = '';
   function drawOverlay() {
-    const dpr = Math.min(devicePixelRatio || 1, 2), W = innerWidth, H = innerHeight;
+    const dpr = Math.min(devicePixelRatio || 1, MAX_DPR), W = innerWidth, H = innerHeight;
     fctx.setTransform(dpr, 0, 0, dpr, 0, 0); fctx.clearRect(0, 0, W, H);
     const cx = W / 2, cy = H / 2;
     if (zoom > 1 && !hasScope()) {      // aiming down iron sights: rear notch with the front post in it
@@ -1620,7 +1677,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
 
   // ---------- resize / boot ----------
   function resize() {
-    const w = gl.clientWidth, h = gl.clientHeight, dpr = Math.min(devicePixelRatio || 1, 2);
+    const w = gl.clientWidth, h = gl.clientHeight, dpr = Math.min(devicePixelRatio || 1, MAX_DPR);
     renderer.setPixelRatio(dpr); renderer.setSize(w, h, false);
     fx.width = w * dpr; fx.height = h * dpr;
     const base = w < h ? 72 : 60;
@@ -1629,6 +1686,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
   addEventListener('resize', resize);
   buildLocker(); equipGun(5, true); applyScene(sceneKey); buildSceneryPanel();
   resize(); hud(); drawCard();
+  if (smallLandscape.matches) coachTimer = setTimeout(() => $('coach').classList.add('quiet'), 6000);
   // test hook: lets an automated check aim and shoot without dragging
   window.__range = { aim(y, p) { yaw = y; pitch = p; }, get state() { return { yaw, pitch, ammo, stats: { ...stats }, bullets: bullets.length, reloadT }; },
     testShot() {   // fires one steady shot and runs it to the end instantly
