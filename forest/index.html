@@ -50,6 +50,11 @@ body {
   background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; cursor: pointer; text-decoration: none;
 }
 .btn:hover { border-color: var(--muted); }
+.online { display: inline-flex; align-items: center; gap: 6px; font: 600 13px/1 var(--body); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--chalk); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 7px 11px; font-variant-numeric: tabular-nums; }
+.online i { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px rgba(143,209,107,.25); }
+.online b { color: var(--good); font-weight: 700; }
+.online span { color: var(--muted); }
 .btn b { color: var(--blaze); }
 button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline-offset: 2px; }
 
@@ -99,6 +104,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
 .gun[aria-pressed="true"] { border-color: var(--blaze); box-shadow: inset 0 0 0 1px var(--blaze); }
 .gun .kind { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--blaze); font-weight: 700; }
 .gun .name { font-family: var(--display); font-size: 22px; line-height: 1.05; }
+.swatch { height: 64px; border-radius: 5px; border: 1px solid var(--line); }
 .gun .note { font-size: 15px; line-height: 1.3; color: var(--muted); }
 .stats { display: grid; grid-template-columns: auto 1fr auto; gap: 3px 8px; align-items: center; font-size: 12px; color: var(--muted); letter-spacing: .04em; }
 .stats .bar { height: 5px; background: rgba(255,255,255,.12); border-radius: 3px; overflow: hidden; }
@@ -125,12 +131,48 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
   .seg { overflow-x: auto; }
   .seg .lbl { display: none; }
   .seg button { flex: 1; padding: 7px 4px; font-size: 13px; }
-  .controls { top: 158px; flex-direction: row; flex-wrap: wrap; justify-content: flex-end; left: 16px; }
-  .controls .btn { padding: 7px 8px; font-size: 12px; }
   .keys { display: none; }
   .left { width: auto; min-width: 0; right: 120px; }
   .coach { font-size: 15px; }
   #hitCard { width: 72px; height: 72px; }
+}
+/* small screens: settings fold into one Menu button so the view stays clear */
+.menu-btn { display: none; }
+@media (max-width: 1000px), (max-height: 520px) {
+  .menu-btn { display: inline-block; position: absolute; top: 8px; right: 8px; z-index: 3; padding: 9px 12px; }
+  .controls { display: none; top: 50px; right: 8px; left: auto; flex-direction: column; align-items: stretch; z-index: 3;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px; max-height: calc(100% - 60px); overflow-y: auto; }
+  .controls.open { display: flex; }
+  .controls .btn { padding: 9px 12px; font-size: 13px; text-align: left; }
+  .coach { transition: opacity .6s; }
+  .coach.quiet { opacity: 0; pointer-events: none; }
+}
+/* phone held sideways: thin edges, open middle */
+@media (max-height: 520px) {
+  .board { top: 6px; left: 8px; transform: none; padding: 2px; }
+  .cell { padding: 1px 6px; }
+  .num { font-size: 16px; }
+  .lbl { font-size: 8px; letter-spacing: .1em; }
+  .dock { top: 50%; bottom: auto; left: 8px; right: auto; transform: translateY(-38%); flex-direction: row; align-items: flex-start; gap: 4px; }
+  .seg { flex-direction: column; padding: 3px; overflow: visible; }
+  .seg .lbl { display: none; }
+  .seg button { flex: none; padding: 6px 8px; font-size: 12px; }
+  .left { top: 44px; bottom: auto; left: 50%; right: auto; transform: translateX(-50%); width: min(420px, calc(100% - 300px)); min-width: 200px; }
+  .left .card { display: none; }
+  .coach { font-size: 13px; padding: 6px 10px; }
+  .keys { display: none; }
+  .touch { right: 8px; bottom: 8px; gap: 8px; }
+  .round { width: 56px; height: 56px; font-size: 10px; letter-spacing: .02em; padding: 0; }
+  .round.fire { width: 78px; height: 78px; }
+  .overlay { place-items: start center; overflow-y: auto; }
+  .endcard { gap: 6px; padding-block: 8px; }
+  .endcard h2 { font-size: 28px; }
+  .endcard .big { font-size: 40px; }
+  .endcard p, .endcard ul { font-size: 13px; }
+  .endcard ul { gap: 3px; padding-block: 8px; }
+  .endcard button { padding: 9px 16px; font-size: 15px; }
+  .locker-in { padding-block: 4px; }
+  .locker-head h2 { font-size: 28px; }
 }
 </style>
 </head>
@@ -149,8 +191,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     <div class="cell" id="clockCell" hidden><span class="lbl">Clock</span><span class="num plain" id="clock">90</span></div>
   </div>
 
-  <div class="controls">
+  <button class="btn menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="controls">Menu</button>
+  <div class="controls" id="controls">
+    <span class="online" id="online" hidden title="People playing Forest Range right now"><i></i><b id="onlineNum">1</b>&nbsp;online<span id="onlineHunting"></span></span>
     <a class="btn" href="../">&larr; Home</a>
+    <button class="btn" id="sceneBtn" type="button">Scenery: <b id="sceneName">Pine Forest</b></button>
     <button class="btn" id="gunBtn" type="button">Gun: <b id="gunName">.308 Bolt-action</b></button>
     <button class="btn" id="modeBtn" type="button">Start hunt</button>
     <button class="btn" id="windBtn" type="button">Wind: <b>Off</b></button>
@@ -196,6 +241,16 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
         <button class="btn" id="lockerClose" type="button">Close</button>
       </div>
       <div class="guns" id="guns"></div>
+    </div>
+  </div>
+
+  <div class="locker" id="scenery" hidden>
+    <div class="locker-in">
+      <div class="locker-head">
+        <div><h2>Scenery</h2><p>Pick where you shoot. Each forest has its own trees, light, weather and ground.</p></div>
+        <button class="btn" id="sceneryClose" type="button">Close</button>
+      </div>
+      <div class="guns" id="scenes"></div>
     </div>
   </div>
 
@@ -258,6 +313,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
   let gun = GUNS[5], gunIndex = 5, zeroAngle = 0;
   const zeroAngleFor = g => Math.atan((g.sightH + 0.5 * G * (g.zero / g.v) ** 2) / g.zero);
   const EYE = new V(0, 1.45, 0);
+  const LITE = matchMedia('(pointer: coarse)').matches;   // phones and tablets: lighter forest, lower resolution
+  const DETAIL = LITE ? 0.7 : 1, MAX_DPR = LITE ? 1.5 : 2;
 
   // ---------- renderer / scene ----------
   const gl = $('gl'), fx = $('fx'), fctx = fx.getContext('2d');
@@ -274,10 +331,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
   camera.rotation.order = 'YXZ'; camera.position.copy(EYE);
   scene.add(camera);
 
-  scene.add(new THREE.HemisphereLight(0xd8ecff, 0x3d4a26, 0.45));
+  const hemi = new THREE.HemisphereLight(0xd8ecff, 0x3d4a26, 0.45); scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff0d0, 1.25);
   sun.position.set(-50, 90, 30); sun.target.position.set(0, 0, -40);
-  sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  sun.castShadow = true; sun.shadow.mapSize.set(LITE ? 1024 : 2048, LITE ? 1024 : 2048);
   Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 10, far: 250 });
   sun.shadow.bias = -0.0005;
   scene.add(sun, sun.target);
@@ -295,82 +352,242 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     m.castShadow = true; m.receiveShadow = true; parent.add(m); return m;
   }
 
-  // sky dome with a vertical gradient
-  {
-    const geo = new THREE.SphereGeometry(2000, 32, 16), cols = [], top = new THREE.Color(0x5f97d6), hor = new THREE.Color(FOG);
-    const pos = geo.attributes.position;
-    for (let i = 0; i < pos.count; i++) { const t = clamp(pos.getY(i) / 900, 0, 1); const c = hor.clone().lerp(top, Math.pow(t, 0.6)); cols.push(c.r, c.g, c.b); }
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
-    const sky = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }));
-    scene.add(sky);
-    // image-based lighting from the sky so metal and wet surfaces have something to reflect
-    const envScene = new THREE.Scene(), envSky = sky.clone(); envSky.scale.setScalar(0.005); envScene.add(envSky);
-    const envGround = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshBasicMaterial({ color: 0x55682f })); envGround.rotation.x = -Math.PI / 2; envGround.position.y = -1.5; envScene.add(envGround);
-    const envSun = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 8), new THREE.MeshBasicMaterial({ color: 0xfff4d8 })); envSun.position.set(-4, 6, -5); envScene.add(envSun);
-    scene.environment = new THREE.PMREMGenerator(renderer).fromScene(envScene, 0.03).texture;
-    const sunTex = canvasTex(128, 128, (g, w) => { const r = g.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(255,250,230,1)'); r.addColorStop(.25, 'rgba(255,240,200,.8)'); r.addColorStop(1, 'rgba(255,240,200,0)'); g.fillStyle = r; g.fillRect(0, 0, w, w); });
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: sunTex, fog: false, depthWrite: false, transparent: true }));
-    s.position.set(-900, 1100, -1300); s.scale.set(380, 380, 1); scene.add(s);
-  }
+  // ---------- scenery themes ----------
+  const SCENES = {
+    pine: { name: 'Pine Forest', note: 'Sunny mountain pines and green meadow grass.', skyTop: 0x5f97d6, skyHor: 0xbfd0c2, fog: [0xbfd0c2, 140, 1100],
+      sun: [0xfff0d0, 1.25], sunDir: [-50, 90, 30], hemi: [0xd8ecff, 0x3d4a26, 0.45], exposure: 1.2, hills: 0x587a5e, berm: 0x6b5236,
+      ground: ['#5c7a35', [70, 100], [30, 50], [22, 42]], trees: { pine: 0.55, fir: 0.3, birch: 0.15 }, conifer: [[0.27, 0.36], [0.35, 0.55], [0.13, 0.23]],
+      leaves: [0x6f9a3a, 0x5d8a32, 0x7aa548], bush: 0x3b5620, grass: [0x6f8f3a, 0x8aa84a], ferns: true, particles: 'motes' },
+    autumn: { name: 'Autumn Woods', note: 'Golden oaks and birches, a carpet of leaves, leaves drifting down.', skyTop: 0x6f9bcf, skyHor: 0xe6d3ad, fog: [0xdcc9a3, 110, 900],
+      sun: [0xffdcaa, 1.2], sunDir: [-70, 60, 20], hemi: [0xffe6c0, 0x5a3d1e, 0.5], exposure: 1.15, hills: 0x9a6a3e, berm: 0x6b4a2c,
+      ground: ['#7b5a2c', [15, 45], [45, 70], [25, 45]], trees: { oak: 0.5, birch: 0.25, pine: 0.25 }, conifer: [[0.25, 0.32], [0.3, 0.45], [0.13, 0.2]],
+      leaves: [0xc8501e, 0xe08a1e, 0xd9b02a, 0xa8381a, 0x8a8a2a, 0xe0a83a], bush: 0x9a5a22, grass: [0xb08a3a, 0x9a7a2a], ferns: true, mushrooms: true, particles: 'leaves' },
+    winter: { name: 'Winter Taiga', note: 'Snow-loaded firs, white ground and falling snow.', skyTop: 0x93adc6, skyHor: 0xe4eaf0, fog: [0xdce3ea, 70, 650],
+      sun: [0xeef4ff, 0.95], sunDir: [-40, 45, 40], hemi: [0xf0f6ff, 0xb8c4d0, 0.7], exposure: 1.05, hills: 0xd2dce6, berm: 0xd6dde4,
+      ground: 'snow', trees: { fir: 0.6, pine: 0.4 }, conifer: [[0.38, 0.45], [0.25, 0.4], [0.1, 0.17]], snowy: true,
+      leaves: [0x6a7a50], bush: 0x9fb0a4, grass: [0xb7a77e, 0xa89870], grassAmount: 0.25, particles: 'snow' },
+    dawn: { name: 'Misty Dawn', note: 'Low golden sun, long shadows and morning mist between the trees.', skyTop: 0x4f6898, skyHor: 0xf0b88c, fog: [0xc9b2a0, 30, 480],
+      sun: [0xffb070, 1.05], sunDir: [-110, 22, -70], hemi: [0xffd2b2, 0x3a3a2a, 0.42], exposure: 1.25, hills: 0x6c6a86, berm: 0x5e4630,
+      ground: ['#4c6830', [60, 95], [25, 45], [18, 34]], trees: { pine: 0.45, oak: 0.3, fir: 0.25 }, conifer: [[0.25, 0.33], [0.3, 0.45], [0.12, 0.2]],
+      leaves: [0x55702e, 0x4a6428, 0x667a34], bush: 0x34481e, grass: [0x5e7a30, 0x74883a], ferns: true, particles: 'motes', moteColor: 0xffd9a0 },
+  };
+  let sceneKey = 'pine';
+  try { if (SCENES[localStorage.getItem('forest-scene')]) sceneKey = localStorage.getItem('forest-scene'); } catch (e) {}
+
+  // sky dome; its vertex colours are rewritten per theme
+  const skyGeo = new THREE.SphereGeometry(2000, 32, 16);
+  skyGeo.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(skyGeo.attributes.position.count * 3), 3));
+  const sky = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }));
+  scene.add(sky);
+  const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ fog: false, depthWrite: false, transparent: true,
+    map: canvasTex(128, 128, (g, w) => { const r = g.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(.25, 'rgba(255,255,255,.8)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, w, w); }) }));
+  sunSprite.scale.set(380, 380, 1); scene.add(sunSprite);
+  // image-based lighting from the sky so metal and fur have something to reflect
+  const envScene = new THREE.Scene(), envSky = sky.clone(); envSky.scale.setScalar(0.005); envScene.add(envSky);
+  const envGround = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshBasicMaterial({ color: 0x55682f })); envGround.rotation.x = -Math.PI / 2; envGround.position.y = -1.5; envScene.add(envGround);
+  const envSun = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 8), new THREE.MeshBasicMaterial({ color: 0xfff4d8 })); envScene.add(envSun);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+
   // distant hills
-  for (let i = 0; i < 14; i++) {
-    const a = -Math.PI * 0.95 + i / 13 * Math.PI * 0.9 - Math.PI / 2 + Math.PI / 2, r = rand(1100, 1500);
-    const h = rand(160, 320);
-    const m = new THREE.Mesh(new THREE.ConeGeometry(rand(260, 420), h, 7), std(0x5d7a63, { flatShading: true }));
-    m.position.set(Math.sin(a - Math.PI / 2) * r, h / 2 - 10, -Math.abs(Math.cos(a - Math.PI / 2)) * r - 300);
+  const hillMat = std(0x5d7a63, { flatShading: true });
+  for (let i = 0; i < 16; i++) {
+    const a = -Math.PI * 0.95 + i / 15 * Math.PI * 0.9, r = rand(1100, 1500), h = rand(160, 340);
+    const m = new THREE.Mesh(new THREE.ConeGeometry(rand(260, 420), h, 7), hillMat);
+    m.position.set(-Math.cos(a) * r, h / 2 - 10, -Math.abs(Math.sin(a)) * r - 300);
     scene.add(m);
   }
 
   // ground
-  const grassTex = canvasTex(256, 256, (g, w, h) => {
-    g.fillStyle = '#5c7a35'; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 9000; i++) {
-      g.fillStyle = `hsl(${rand(70, 100)}, ${rand(30, 50)}%, ${rand(22, 42)}%)`;
-      g.fillRect(Math.random() * w, Math.random() * h, 1, rand(2, 5));
-    }
-  });
-  grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping; grassTex.repeat.set(900, 900);
-  const ground = mesh(new THREE.PlaneGeometry(4000, 4000), std(0xffffff, { map: grassTex }), 0, 0, 0);
+  const ground = mesh(new THREE.PlaneGeometry(4000, 4000), std(0xffffff), 0, 0, 0);
   ground.rotation.x = -Math.PI / 2; ground.castShadow = false;
-
-  // clearing where the lanes are; trees only outside it
-  const inClearing = (x, z) => z < 6 && z > -345 && Math.abs(x) < 14 + -z * 0.42;
-  const berm = mesh(new THREE.BoxGeometry(260, 9, 14), std(0x6b5236), 0, 3.5, -335);
-  berm.userData.kind = 'berm';
-
-  {
-    const N = 1100, trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.22, 0.34, 4, 7), std(0x4a3524), N);
-    const foliage = [[2.6, 5, 5], [2.0, 4.2, 7.3], [1.3, 3.4, 9.3]].map(([r, h, y]) => {
-      const geo = new THREE.ConeGeometry(r, h, 8); geo.translate(0, y, 0);
-      return new THREE.InstancedMesh(geo, std(0xffffff, { roughness: 0.95 }), N);
+  function groundTex(S) {
+    const t = canvasTex(256, 256, (g, w, h) => {
+      if (S.ground === 'snow') {
+        g.fillStyle = '#eef2f5'; g.fillRect(0, 0, w, h);
+        for (let i = 0; i < 5000; i++) { g.fillStyle = Math.random() < 0.5 ? 'rgba(170,190,215,.25)' : 'rgba(255,255,255,.7)'; g.fillRect(rand(0, w), rand(0, h), rand(1, 3), rand(1, 2)); }
+        return;
+      }
+      const [base, hue, sat, lig] = S.ground;
+      g.fillStyle = base; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 9000; i++) { g.fillStyle = `hsl(${rand(...hue)}, ${rand(...sat)}%, ${rand(...lig)}%)`; g.fillRect(Math.random() * w, Math.random() * h, 1, rand(2, 5)); }
+      if (S.mushrooms) for (let i = 0; i < 900; i++) {          // fallen leaves on the ground
+        g.fillStyle = '#' + S.leaves[(Math.random() * S.leaves.length) | 0].toString(16).padStart(6, '0');
+        g.globalAlpha = rand(0.5, 0.9); g.beginPath(); g.ellipse(rand(0, w), rand(0, h), rand(1.5, 3.5), rand(1, 2), rand(0, 3), 0, 7); g.fill();
+      }
+      g.globalAlpha = 1;
     });
-    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new V(), p = new V(), c = new THREE.Color();
-    let n = 0;
-    while (n < N) {
-      const a = rand(0, Math.PI * 2), r = Math.sqrt(Math.random()) * 620;
-      const x = Math.cos(a) * r, z = Math.sin(a) * r - 120;
-      if (inClearing(x, z) || Math.hypot(x, z) < 10) continue;
-      const k = rand(0.75, 1.7);
-      q.setFromAxisAngle(new V(0, 1, 0), rand(0, 6.28));
-      m.compose(p.set(x, 0, z), q, s.set(k, k * rand(0.9, 1.25), k));
-      trunk.setMatrixAt(n, m);
-      c.setHSL(rand(0.27, 0.36), rand(0.35, 0.55), rand(0.16, 0.26));
-      foliage.forEach(f => { f.setMatrixAt(n, m); f.setColorAt(n, c); });
-      n++;
-    }
-    [trunk, ...foliage].forEach(im => { im.castShadow = true; im.receiveShadow = true; scene.add(im); });
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(900, 900);
+    return t;
   }
-  // bushes and rocks inside the clearing
+
+  // clearing where the lanes are; the forest grows everywhere else
+  const inClearing = (x, z) => z < 6 && z > -345 && Math.abs(x) < 14 + -z * 0.42;
+  const bermMat = std(0x6b5236);
+  const berm = mesh(new THREE.BoxGeometry(260, 9, 14), bermMat, 0, 3.5, -335);
+  berm.userData.kind = 'berm';
   const laneX = [-5, -3, 0, 7, 15], laneD = [25, 50, 100, 200, 300];
-  {
-    const bushMat = std(0x3b5620, { flatShading: true }), rockMat = std(0x8a8d86, { flatShading: true });
-    for (let i = 0; i < 140; i++) {
-      const z = -rand(18, 330), w = 14 + -z * 0.42, x = rand(-w, w);
-      if (laneD.some((d, j) => Math.abs(z + d) < 6 && Math.abs(x - laneX[j]) < 4)) continue;
-      const rock = Math.random() < 0.2;
-      const b = mesh(new THREE.DodecahedronGeometry(rock ? rand(0.4, 1.1) : rand(0.6, 1.5), 0), rock ? rockMat : bushMat, x, rock ? 0.2 : 0.5, z);
-      b.scale.y = rock ? 0.6 : 0.75; b.rotation.y = rand(0, 6);
+  const nearLane = (x, z, pad = 4) => laneD.some((d, j) => Math.abs(z + d) < 6 && Math.abs(x - laneX[j]) < pad) || (z > -14 && Math.abs(x) < 7);
+
+  // vegetation kits: each tree type is a list of parts that share one transform per tree
+  const barkTex = canvasTex(64, 128, (g, w, h) => { g.fillStyle = '#4a3524'; g.fillRect(0, 0, w, h); for (let i = 0; i < 260; i++) { g.fillStyle = Math.random() < 0.5 ? 'rgba(20,10,5,.5)' : 'rgba(110,85,60,.4)'; g.fillRect(rand(0, w), rand(0, h), rand(1, 3), rand(4, 14)); } });
+  const birchTex = canvasTex(64, 128, (g, w, h) => { g.fillStyle = '#e9e6dc'; g.fillRect(0, 0, w, h); for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(30,30,30,.8)'; g.fillRect(rand(0, w), rand(0, h), rand(6, 22), rand(1.5, 4)); } });
+  const grassTuftTex = canvasTex(128, 128, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    for (let i = 0; i < 46; i++) { const x = rand(8, w - 8), lean = rand(-22, 22), ht = rand(h * 0.45, h * 0.98); g.strokeStyle = `rgba(255,255,255,${rand(0.7, 1)})`; g.lineWidth = rand(2, 4.5);
+      g.beginPath(); g.moveTo(x, h); g.quadraticCurveTo(x + lean * 0.3, h - ht * 0.5, x + lean, h - ht); g.stroke(); }
+  });
+  function treeParts(type, S) {
+    const P = [], cone = (r, h, y) => { const geo = new THREE.ConeGeometry(r, h, 9); geo.translate(0, y, 0); return geo; };
+    const blob = (r, x, y, z) => { const geo = new THREE.IcosahedronGeometry(r, 1); geo.translate(x, y, z); return geo; };
+    const trunkMat = std(0xffffff, { map: barkTex, roughness: 1 });
+    const snowMat = std(0xf4f7fa, { roughness: 0.9 });
+    const leafMat = () => std(0xffffff, { roughness: 0.95, flatShading: true });
+    if (type === 'pine' || type === 'fir') {
+      const layers = type === 'pine' ? [[2.6, 5, 5], [2.0, 4.2, 7.3], [1.3, 3.4, 9.3]] : [[2.1, 3.4, 3.4], [1.8, 3.2, 5.4], [1.5, 3.0, 7.3], [1.15, 2.8, 9.1], [0.75, 2.6, 10.8]];
+      const t = new THREE.CylinderGeometry(type === 'pine' ? 0.22 : 0.17, type === 'pine' ? 0.34 : 0.28, 4, 7); t.translate(0, 2, 0);
+      P.push({ geo: t, mat: trunkMat });
+      for (const [r, h, y] of layers) {
+        P.push({ geo: cone(r, h, y), mat: leafMat(), color: 'conifer' });
+        if (S.snowy) P.push({ geo: cone(r * 0.82, h * 0.42, y + h * 0.3), mat: snowMat });
+      }
+    } else if (type === 'oak') {
+      const t = new THREE.CylinderGeometry(0.28, 0.48, 5.2, 8); t.translate(0, 2.6, 0); P.push({ geo: t, mat: trunkMat });
+      const br = new THREE.CylinderGeometry(0.1, 0.18, 2.6, 6); br.rotateZ(0.9); br.translate(0.9, 5, 0); P.push({ geo: br, mat: trunkMat });
+      for (const [r, x, y, z] of [[2.8, 0, 7.2, 0], [2.2, 1.9, 6.3, 0.7], [2.3, -1.8, 6.5, -0.8], [2.0, 0.4, 8.8, -0.6], [2.1, -0.6, 6.1, 1.9], [1.8, 1.0, 6.4, -1.9]])
+        P.push({ geo: blob(r, x, y, z), mat: leafMat(), color: 'leaves' });
+    } else if (type === 'birch') {
+      const t = new THREE.CylinderGeometry(0.11, 0.17, 9, 8); t.translate(0, 4.5, 0); P.push({ geo: t, mat: std(0xffffff, { map: birchTex, roughness: 0.8 }) });
+      for (const [r, x, y, z] of [[1.4, 0, 9.2, 0], [1.1, 0.8, 8.2, 0.3], [1.1, -0.7, 8.4, -0.4], [0.9, 0.2, 10.3, 0.2]])
+        P.push({ geo: blob(r, x, y, z), mat: leafMat(), color: S.mushrooms ? 'gold' : 'leaves' });
     }
+    return P;
+  }
+  let veg = null;
+  const instanced = (geo, mat, list, colorFn) => {
+    const im = new THREE.InstancedMesh(geo, mat, Math.max(1, list.length));
+    list.forEach((m, i) => { im.setMatrixAt(i, m.matrix); if (colorFn) im.setColorAt(i, colorFn(m)); });
+    im.count = list.length; im.castShadow = true; im.receiveShadow = true; veg.add(im); return im;
+  };
+  function buildVegetation(S) {
+    if (veg) { scene.remove(veg); veg.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material !== bermMat) o.material.dispose(); }); }
+    veg = new THREE.Group(); scene.add(veg);
+    const types = Object.keys(S.trees), pick = () => { let r = Math.random(), acc = 0; for (const k of types) { acc += S.trees[k]; if (r <= acc) return k; } return types[0]; };
+    const byType = {}; types.forEach(k => byType[k] = []);
+    const q = new THREE.Quaternion(), up = new V(0, 1, 0), c = new THREE.Color();
+    const place = (x, z, k) => {
+      const type = pick(), mtx = new THREE.Matrix4();
+      q.setFromAxisAngle(up, rand(0, 6.28));
+      mtx.compose(new V(x, 0, z), q, new V(k, k * rand(0.9, 1.3), k));
+      byType[type].push({ matrix: mtx, seed: Math.random() });
+    };
+    // deep forest, a dense band along the tree line, and lone trees out on the far meadow
+    for (let n = 0; n < 1700 * DETAIL;) { const a = rand(0, 6.28), r = Math.sqrt(Math.random()) * 650, x = Math.cos(a) * r, z = Math.sin(a) * r - 140; if (inClearing(x, z) || Math.hypot(x, z) < 12) continue; place(x, z, rand(0.75, 1.7)); n++; }
+    for (let n = 0; n < 650 * DETAIL;) { const z = -rand(-5, 345), side = Math.random() < 0.5 ? -1 : 1, x = side * (14 - z * 0.42 + rand(0.5, 22)); if (inClearing(x, z)) continue; place(x, z, rand(0.7, 1.5)); n++; }
+    for (let n = 0; n < 40; n++) { const z = -rand(70, 320), w = 14 - z * 0.42, x = (Math.random() < 0.5 ? -1 : 1) * rand(Math.max(26, w * 0.55), w - 2); if (!nearLane(x, z, 9)) place(x, z, rand(0.8, 1.3)); }
+    for (const type of types) {
+      const list = byType[type]; if (!list.length) continue;
+      for (const part of treeParts(type, S)) {
+        const fn = part.color === 'conifer' ? m => c.setHSL(lerp(...S.conifer[0], m.seed), lerp(...S.conifer[1], m.seed), lerp(...S.conifer[2], (m.seed * 7) % 1)).clone()
+          : part.color === 'leaves' ? m => c.setHex(S.leaves[Math.floor(m.seed * S.leaves.length)]).offsetHSL(0, 0, rand(-0.05, 0.04)).clone()
+          : part.color === 'gold' ? m => c.setHex(m.seed < 0.5 ? 0xe8b830 : 0xd99a20).clone() : null;
+        instanced(part.geo, part.mat, list, fn);
+      }
+    }
+    // undergrowth and forest floor
+    const decor = { bush: [], rock: [], log: [], stump: [], fern: [], grass: [], mush: [] };
+    const M4 = (x, y, z, s, ry = rand(0, 6.28), sx = s, sy = s, sz = s, rz = 0) => new THREE.Matrix4().compose(new V(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, ry, rz)), new V(sx, sy, sz));
+    const inField = () => { for (;;) { const z = -rand(14, 335), w = 14 - z * 0.42, x = rand(-w - 25, w + 25); if (!nearLane(x, z)) return [x, z, Math.abs(x) > w]; } };
+    for (let i = 0; i < 260; i++) { const [x, z] = inField(); decor.bush.push({ matrix: M4(x, 0.45, z, rand(0.6, 1.6), undefined, undefined, rand(0.5, 1.1)), seed: Math.random() }); }
+    for (let i = 0; i < 90; i++) { const [x, z] = inField(); decor.rock.push({ matrix: M4(x, 0.15, z, rand(0.3, 1.1), undefined, undefined, rand(0.35, 0.7)), seed: Math.random() }); }
+    for (let i = 0; i < 70; i++) { const [x, z, edge] = inField(); if (!edge && Math.random() < 0.6) continue; decor.log.push({ matrix: M4(x, 0.28, z, 1, rand(0, 6.28), 1, rand(0.8, 1.2), 1, Math.PI / 2), seed: Math.random() }); }
+    for (let i = 0; i < 90; i++) { const [x, z] = inField(); decor.stump.push({ matrix: M4(x, 0.25, z, rand(0.7, 1.3)), seed: Math.random() }); }
+    if (S.ferns) for (let i = 0; i < 700 * DETAIL; i++) { const [x, z] = inField(); decor.fern.push({ matrix: M4(x, 0.25, z, rand(0.6, 1.4), undefined, undefined, rand(0.4, 0.8)), seed: Math.random() }); }
+    const grassN = Math.round(5000 * DETAIL * (S.grassAmount ?? 1));
+    for (let i = 0; i < grassN; i++) { const z = -rand(4, 200), w = 14 - z * 0.42, x = rand(-w - 10, w + 10); if (nearLane(x, z, 2.5)) continue; decor.grass.push({ matrix: M4(x, 0, z, rand(0.5, 1.1)), seed: Math.random() }); }
+    if (S.mushrooms) for (let i = 0; i < 120; i++) { const [x, z] = inField(); decor.mush.push({ matrix: M4(x, 0, z, rand(0.6, 1.3)), seed: Math.random() }); }
+    const bushGeo = new THREE.IcosahedronGeometry(1, 1), rockGeo = new THREE.DodecahedronGeometry(1, 0);
+    const logGeo = new THREE.CylinderGeometry(0.28, 0.32, 5, 9), stumpGeo = new THREE.CylinderGeometry(0.34, 0.46, 0.5, 9);
+    const fernGeo = new THREE.ConeGeometry(0.8, 0.6, 7, 1, true);
+    const tuft = new THREE.PlaneGeometry(1.2, 0.8); tuft.translate(0, 0.4, 0);
+    const grassGeo = mergeGeos([tuft, tuft.clone().rotateY(Math.PI / 2)]);
+    const capGeo = new THREE.SphereGeometry(0.12, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2); capGeo.translate(0, 0.14, 0);
+    const bushCol = new THREE.Color(S.bush);
+    instanced(bushGeo, std(0xffffff, { flatShading: true, roughness: 0.95 }), decor.bush, m => bushCol.clone().offsetHSL(rand(-0.02, 0.02), 0, (m.seed - 0.5) * 0.1));
+    instanced(rockGeo, std(S.snowy ? 0xc8ced4 : 0x8a8d86, { flatShading: true }), decor.rock);
+    instanced(logGeo, std(0xffffff, { map: barkTex, roughness: 1 }), decor.log);
+    instanced(stumpGeo, std(0xffffff, { map: barkTex, roughness: 1 }), decor.stump);
+    if (decor.fern.length) instanced(fernGeo, std(0xffffff, { side: THREE.DoubleSide, flatShading: true }), decor.fern, m => new THREE.Color(S.mushrooms ? (m.seed < 0.5 ? 0x9a6a24 : 0x7a7a2a) : 0x4f7a2a).offsetHSL(0, 0, (m.seed - 0.5) * 0.08));
+    const gcols = S.grass.map(h => new THREE.Color(h));
+    const g = instanced(grassGeo, new THREE.MeshStandardMaterial({ map: grassTuftTex, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 1 }), decor.grass, m => gcols[m.seed < 0.5 ? 0 : 1].clone().offsetHSL(0, 0, (m.seed - 0.5) * 0.1));
+    g.castShadow = false;
+    if (decor.mush.length) { instanced(capGeo, std(0xb8281e, { roughness: 0.6 }), decor.mush); const st = new THREE.CylinderGeometry(0.03, 0.04, 0.14, 6); st.translate(0, 0.07, 0); instanced(st, std(0xeee8d8), decor.mush); }
+    if (S.snowy) instanced(new THREE.SphereGeometry(1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), std(0xf4f7fa, { roughness: 0.9 }), decor.bush.map(b => ({ matrix: b.matrix.clone().multiply(new THREE.Matrix4().compose(new V(0, 0.35, 0), new THREE.Quaternion(), new V(0.92, 0.5, 0.92))) })));
+  }
+  function mergeGeos(geos) {                     // tiny merge for non-indexed copies of simple geometries
+    const parts = geos.map(g => g.index ? g.toNonIndexed() : g), out = new THREE.BufferGeometry();
+    for (const name of ['position', 'normal', 'uv']) {
+      const size = parts[0].attributes[name].itemSize, arr = new Float32Array(parts.reduce((n, p) => n + p.attributes[name].array.length, 0));
+      let o = 0; for (const p of parts) { arr.set(p.attributes[name].array, o); o += p.attributes[name].array.length; }
+      out.setAttribute(name, new THREE.BufferAttribute(arr, size));
+    }
+    return out;
+  }
+
+  // weather particles that follow the camera: snow, falling leaves or floating motes
+  const PN = 1600, partGeo = new THREE.BufferGeometry(), partPos = new Float32Array(PN * 3), partCol = new Float32Array(PN * 3), partSeed = new Float32Array(PN);
+  for (let i = 0; i < PN; i++) { partPos[i * 3] = rand(-60, 60); partPos[i * 3 + 1] = rand(0, 28); partPos[i * 3 + 2] = rand(-110, -4); partSeed[i] = Math.random(); }
+  partGeo.setAttribute('position', new THREE.BufferAttribute(partPos, 3)); partGeo.setAttribute('color', new THREE.BufferAttribute(partCol, 3));
+  const dotTex = canvasTex(32, 32, (g, w) => { const r = g.createRadialGradient(16, 16, 0, 16, 16, 16); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.6, 'rgba(255,255,255,.8)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, w, w); });
+  const leafTex = canvasTex(32, 32, (g) => { g.fillStyle = '#fff'; g.beginPath(); g.ellipse(16, 16, 13, 7, 0.6, 0, 7); g.fill(); });
+  const partMat = new THREE.PointsMaterial({ size: 0.12, map: dotTex, vertexColors: true, transparent: true, depthWrite: false, alphaTest: 0.05 });
+  const particles = new THREE.Points(partGeo, partMat); particles.frustumCulled = false; scene.add(particles);
+  let partKind = null;
+  function setParticles(S) {
+    partKind = S.particles; particles.visible = !!partKind;
+    const cols = partKind === 'leaves' ? S.leaves.map(h => new THREE.Color(h)) : [new THREE.Color(partKind === 'snow' ? 0xffffff : S.moteColor || 0xfff2c8)];
+    for (let i = 0; i < PN; i++) { const c = cols[i % cols.length]; partCol[i * 3] = c.r; partCol[i * 3 + 1] = c.g; partCol[i * 3 + 2] = c.b; }
+    partGeo.attributes.color.needsUpdate = true;
+    partMat.map = partKind === 'leaves' ? leafTex : dotTex;
+    partMat.size = partKind === 'leaves' ? 0.28 : partKind === 'snow' ? 0.13 : 0.07;
+    partMat.blending = partKind === 'motes' ? THREE.AdditiveBlending : THREE.NormalBlending;
+    partMat.opacity = partKind === 'motes' ? 0.7 : 1; partMat.needsUpdate = true;
+  }
+  function updateParticles(dt, time) {
+    if (!partKind) return;
+    const fall = partKind === 'snow' ? 1.1 : partKind === 'leaves' ? 0.9 : 0.05;
+    for (let i = 0; i < PN; i++) {
+      const s = partSeed[i], k = i * 3;
+      partPos[k] += (wind * 0.35 + Math.sin(time * (0.6 + s) + s * 20) * (partKind === 'leaves' ? 0.9 : 0.25)) * dt;
+      partPos[k + 1] -= fall * (0.6 + s * 0.8) * dt - (partKind === 'motes' ? Math.sin(time * 0.4 + s * 30) * 0.08 * dt : 0);
+      partPos[k + 2] += Math.cos(time * (0.5 + s) + s * 10) * 0.2 * dt;
+      if (partPos[k + 1] < 0) { partPos[k + 1] = 28; partPos[k] = rand(-60, 60); }
+      if (partPos[k] > 60) partPos[k] -= 120; if (partPos[k] < -60) partPos[k] += 120;
+    }
+    partGeo.attributes.position.needsUpdate = true;
+  }
+
+  function applyScene(key) {
+    const S = SCENES[key]; sceneKey = key;
+    try { localStorage.setItem('forest-scene', key); } catch (e) {}
+    const top = new THREE.Color(S.skyTop), hor = new THREE.Color(S.skyHor), pos = skyGeo.attributes.position, col = skyGeo.attributes.color;
+    for (let i = 0; i < pos.count; i++) { const t = clamp(pos.getY(i) / 900, 0, 1); const c = hor.clone().lerp(top, Math.pow(t, 0.6)); col.setXYZ(i, c.r, c.g, c.b); }
+    col.needsUpdate = true;
+    scene.fog.color.setHex(S.fog[0]); scene.fog.near = S.fog[1]; scene.fog.far = S.fog[2];
+    sun.color.setHex(S.sun[0]); sun.intensity = S.sun[1]; sun.position.set(...S.sunDir);
+    hemi.color.setHex(S.hemi[0]); hemi.groundColor.setHex(S.hemi[1]); hemi.intensity = S.hemi[2];
+    renderer.toneMappingExposure = S.exposure;
+    const sd = new V(...S.sunDir).normalize();
+    sunSprite.position.copy(sd).multiplyScalar(1600); sunSprite.material.color.setHex(S.sun[0]);
+    hillMat.color.setHex(S.hills); bermMat.color.setHex(S.berm);
+    if (ground.material.map) ground.material.map.dispose();
+    ground.material.map = groundTex(S); ground.material.needsUpdate = true;
+    envGround.material.color.setHex(S.ground === 'snow' ? 0xdfe6ec : new THREE.Color(S.ground[0]).getHex());
+    envSun.material.color.setHex(S.sun[0]); envSun.position.copy(sd).multiplyScalar(8);
+    if (scene.environment) scene.environment.dispose();
+    scene.environment = pmrem.fromScene(envScene, 0.03).texture;
+    buildVegetation(S); setParticles(S);
+    if ($('sceneName')) $('sceneName').textContent = S.name;
+    document.querySelectorAll('.scene-card').forEach(b => b.setAttribute('aria-pressed', b.dataset.scene === key));
   }
   // shooting bench in front of you
   {
@@ -822,25 +1039,30 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
   aimAt(paper[lane]);
 
   // ---------- input ----------
-  let drag = null;
+  // multi-touch: the first finger down aims; a quick tap with any finger fires, so you can aim and shoot at once
+  const touches = new Map();
+  let aimId = null;
   const sens = () => THREE.MathUtils.degToRad(camera.fov) / gl.clientHeight;
   gl.addEventListener('pointerdown', e => {
-    initAudio();
+    initAudio(); closeMenu();
     if (!$('overlay').hidden) return;
-    drag = { x: e.clientX, y: e.clientY, moved: 0, t: performance.now() };
-    gl.setPointerCapture(e.pointerId);
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY, moved: 0, t: performance.now() });
+    if (aimId === null) aimId = e.pointerId;
+    try { gl.setPointerCapture(e.pointerId); } catch (err) {}
   });
   gl.addEventListener('pointermove', e => {
-    if (!drag) return;
-    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-    drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy);
-    yaw -= dx * sens(); pitch = clamp(pitch - dy * sens(), -0.35, 0.45);
+    const d = touches.get(e.pointerId); if (!d) return;
+    const dx = e.clientX - d.x, dy = e.clientY - d.y;
+    d.x = e.clientX; d.y = e.clientY; d.moved += Math.abs(dx) + Math.abs(dy);
+    if (e.pointerId === aimId) { yaw -= dx * sens(); pitch = clamp(pitch - dy * sens(), -0.35, 0.45); }
   });
-  gl.addEventListener('pointerup', () => {
-    if (drag && drag.moved < 6 && performance.now() - drag.t < 350) fire();
-    drag = null;
-  });
-  gl.addEventListener('pointercancel', () => { drag = null; });
+  const lift = (e, cancelled) => {
+    const d = touches.get(e.pointerId); touches.delete(e.pointerId);
+    if (!cancelled && d && d.moved < 8 && performance.now() - d.t < 350) fire();
+    if (e.pointerId === aimId) aimId = touches.size ? touches.keys().next().value : null;
+  };
+  gl.addEventListener('pointerup', e => lift(e, false));
+  gl.addEventListener('pointercancel', e => lift(e, true));
   gl.addEventListener('wheel', e => { e.preventDefault(); stepZoom(e.deltaY < 0 ? 1 : -1); }, { passive: false });
   gl.addEventListener('contextmenu', e => e.preventDefault());
   addEventListener('keydown', e => {
@@ -851,7 +1073,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     else if (k === 'z') stepZoom(1, true);
     else if (k === 'shift') holding = true;
     else if (k === 'g') { $('locker').hidden ? openLocker() : ($('locker').hidden = true); }
-    else if (k === 'escape') $('locker').hidden = true;
+    else if (k === 'escape') { $('locker').hidden = true; $('scenery').hidden = true; }
     else if (k === 'q') equipGun(gunIndex - 1);
     else if (k === 'e') equipGun(gunIndex + 1);
     else if ('12345'.includes(k) && mode === 'practice') setLane(+k - 1);
@@ -863,8 +1085,15 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     }
   });
   addEventListener('keyup', e => { if (e.key === 'Shift') holding = false; });
-  $('fireBtn').addEventListener('click', () => { initAudio(); fire(); });
-  $('reloadBtn').addEventListener('click', reload);
+  const press = (el, fn) => {
+    el.addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); fn(); });   // instant, even while another finger aims
+    el.addEventListener('click', e => { if (e.detail === 0) fn(); });                    // keyboard Enter/Space
+  };
+  press($('fireBtn'), fire); press($('reloadBtn'), reload);
+  // Menu button for small screens
+  const closeMenu = () => { $('controls').classList.remove('open'); $('menuBtn').setAttribute('aria-expanded', 'false'); };
+  $('menuBtn').addEventListener('click', () => { const open = $('controls').classList.toggle('open'); $('menuBtn').setAttribute('aria-expanded', open); });
+  $('controls').addEventListener('click', e => { if (e.target.closest('button')) closeMenu(); });
   const bb = $('breathBtn');
   bb.addEventListener('pointerdown', e => { e.preventDefault(); holding = true; bb.classList.add('held'); });
   for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) bb.addEventListener(ev, () => { holding = false; bb.classList.remove('held'); });
@@ -903,7 +1132,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
 
   // ---------- shooting ----------
   function fire() {
-    if (!$('overlay').hidden || !$('locker').hidden) return;
+    if (!$('overlay').hidden || !$('locker').hidden || !$('scenery').hidden) return;
     if (reloadT > 0 || cycleT > 0) return;
     if (ammo === 0) { tone('click'); reload(); return; }
     ammo--; cycleT = gun.cycle; stats.shots++;
@@ -1213,6 +1442,21 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
       $('guns').appendChild(b);
     });
   }
+  function buildSceneryPanel() {
+    $('scenes').innerHTML = '';
+    for (const [key, S] of Object.entries(SCENES)) {
+      const hex = h => '#' + h.toString(16).padStart(6, '0');
+      const groundCol = S.ground === 'snow' ? '#eef2f5' : S.ground[0];
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'gun scene-card'; b.dataset.scene = key;
+      b.innerHTML = `<span class="swatch" style="background:linear-gradient(${hex(S.skyTop)} 0%, ${hex(S.skyHor)} 48%, ${hex(S.leaves[0])} 50%, ${hex(S.leaves[S.leaves.length - 1])} 66%, ${groundCol} 67%)"></span>
+        <span class="name">${S.name}</span><span class="note">${S.note}</span>`;
+      b.addEventListener('click', () => { applyScene(key); $('scenery').hidden = true; });
+      $('scenes').appendChild(b);
+    }
+    document.querySelectorAll('.scene-card').forEach(b => b.setAttribute('aria-pressed', b.dataset.scene === sceneKey));
+  }
+  $('sceneBtn').addEventListener('click', () => { $('scenery').hidden = false; });
+  $('sceneryClose').addEventListener('click', () => { $('scenery').hidden = true; });
   const openLocker = () => { $('locker').hidden = false; document.querySelectorAll('.gun').forEach((b, j) => b.setAttribute('aria-pressed', j === gunIndex)); };
   $('gunBtn').addEventListener('click', openLocker);
   $('lockerClose').addEventListener('click', () => { $('locker').hidden = true; });
@@ -1233,7 +1477,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     if (level) { $('levelNum').textContent = level; $('killNum').textContent = kills + '/' + levelSpec(level).goal; $('clock').textContent = Math.ceil(clock); }
     $('soundBtn').innerHTML = 'Sound: <b>' + (sound ? 'On' : 'Off') + '</b>';
   }
-  function coach(kind, tag, text) { $('coach').className = 'coach ' + kind; $('coachTag').textContent = tag; $('coachText').textContent = text; }
+  let coachTimer = 0;
+  const smallLandscape = matchMedia('(max-height: 520px)');
+  function coach(kind, tag, text) {
+    $('coach').className = 'coach ' + kind; $('coachTag').textContent = tag; $('coachText').textContent = text;
+    clearTimeout(coachTimer);                // on a sideways phone the tip fades so it never blocks the view
+    if (smallLandscape.matches) coachTimer = setTimeout(() => $('coach').classList.add('quiet'), 4500);
+  }
   function popup(p, text, color) {
     const v = p.clone().project(camera);
     if (v.z > 1) return;
@@ -1263,7 +1513,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
   // ---------- scope / crosshair overlay ----------
   let rangeText = '';
   function drawOverlay() {
-    const dpr = Math.min(devicePixelRatio || 1, 2), W = innerWidth, H = innerHeight;
+    const dpr = Math.min(devicePixelRatio || 1, MAX_DPR), W = innerWidth, H = innerHeight;
     fctx.setTransform(dpr, 0, 0, dpr, 0, 0); fctx.clearRect(0, 0, W, H);
     const cx = W / 2, cy = H / 2;
     if (zoom > 1 && !hasScope()) {      // aiming down iron sights: rear notch with the front post in it
@@ -1369,6 +1619,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
 
     stepBullets(dt);
     updateTargets(dt);
+    updateParticles(dt, now / 1000);
     for (let i = fxSprites.length - 1; i >= 0; i--) {
       const f = fxSprites[i]; f.t += dt;
       const life = f.life || 0.9;
@@ -1377,7 +1628,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
       if (f.t > life) { scene.remove(f.s); fxSprites.splice(i, 1); }
     }
 
-    if (mode === 'hunt' && $('overlay').hidden && $('locker').hidden) {
+    if (mode === 'hunt' && $('overlay').hidden && $('locker').hidden && $('scenery').hidden) {
       clock -= dt; spawnT -= dt;
       if (spawnT <= 0) { spawnHuntTarget(); spawnT = rand(1.6, 3.2); }
       if (clock <= 0) { clock = 0; levelFailed(); }
@@ -1426,15 +1677,16 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
 
   // ---------- resize / boot ----------
   function resize() {
-    const w = gl.clientWidth, h = gl.clientHeight, dpr = Math.min(devicePixelRatio || 1, 2);
+    const w = gl.clientWidth, h = gl.clientHeight, dpr = Math.min(devicePixelRatio || 1, MAX_DPR);
     renderer.setPixelRatio(dpr); renderer.setSize(w, h, false);
     fx.width = w * dpr; fx.height = h * dpr;
     const base = w < h ? 72 : 60;
     camera.aspect = w / h; camera.fov = base / zoom; camera.updateProjectionMatrix();
   }
   addEventListener('resize', resize);
-  buildLocker(); equipGun(5, true);
+  buildLocker(); equipGun(5, true); applyScene(sceneKey); buildSceneryPanel();
   resize(); hud(); drawCard();
+  if (smallLandscape.matches) coachTimer = setTimeout(() => $('coach').classList.add('quiet'), 6000);
   // test hook: lets an automated check aim and shoot without dragging
   window.__range = { aim(y, p) { yaw = y; pitch = p; }, get state() { return { yaw, pitch, ammo, stats: { ...stats }, bullets: bullets.length, reloadT }; },
     testShot() {   // fires one steady shot and runs it to the end instantly
@@ -1443,7 +1695,28 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
       for (let i = 0; i < 400 && bullets.length; i++) stepBullets(1 / 60);
       cycleT = 0; return $('coachTag').textContent + ' | ' + $('coachText').textContent;
     },
-    fire, setLane, setZoom, equipGun, briefing, startLevel, levelSpec, get kills() { return kills; }, get level() { return level; }, GUNS, get gun() { return gun; }, startHunt, paper, targets, spawnAnimal, spawnGong, laneX, EYE, holdBreath(v) { holding = v; } };
+    fire, setLane, setZoom, equipGun, applyScene, SCENES, briefing, startLevel, levelSpec, get kills() { return kills; }, get level() { return level; }, GUNS, get gun() { return gun; }, startHunt, paper, targets, spawnAnimal, spawnGong, laneX, EYE, holdBreath(v) { holding = v; } };
+  // ---------- players online (shared room; only lights up where the viewer supports it) ----------
+  (async () => {
+    const room = window.claude && window.claude.use ? await window.claude.use('room') : null;
+    if (!room) return;
+    let sent = '';
+    const share = () => {              // tell others what you're up to; no names, just the game state
+      const me = { mode, level: level || 0, scene: sceneKey };
+      const key = JSON.stringify(me);
+      if (key !== sent) { sent = key; room.presence(me).catch(() => {}); }
+    };
+    const render = () => {
+      const people = room.peers().filter(p => p.kind === 'viewer');
+      const n = Math.max(1, people.length), hunting = people.filter(p => p.presence && p.presence.mode === 'hunt').length;
+      $('onlineNum').textContent = n;
+      $('onlineHunting').textContent = hunting ? ` · ${hunting} hunting` : '';
+      $('online').title = n === 1 ? 'Just you right now' : `${n} people have Forest Range open right now`;
+      $('online').hidden = false;
+    };
+    room.onPeers(render, () => {});
+    share(); setInterval(share, 1500);
+  })();
   requestAnimationFrame(frame);
 })();
 </script>
