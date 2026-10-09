@@ -87,6 +87,23 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
 @keyframes rise { from { opacity: 1; transform: translate(-50%, -50%); } to { opacity: 0; transform: translate(-50%, -150%); } }
 @media (prefers-reduced-motion: reduce) { .pop { animation-timing-function: steps(1, end); } }
 
+.locker { position: absolute; inset: 0; background: rgba(10,16,10,.82); padding: 16px; overflow-y: auto; display: grid; place-items: start center; }
+.locker-in { width: min(980px, 100%); display: grid; gap: 14px; padding-block: 24px; }
+.locker-head { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; }
+.locker-head h2 { font-family: var(--display); font-weight: 400; font-size: 40px; margin: 0; line-height: 1; }
+.locker-head p { margin: 4px 0 0; color: var(--muted); font-size: 16px; }
+.guns { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.gun { text-align: left; display: grid; gap: 6px; padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  color: var(--chalk); cursor: pointer; font-family: var(--body); min-width: 0; }
+.gun:hover { border-color: var(--muted); }
+.gun[aria-pressed="true"] { border-color: var(--blaze); box-shadow: inset 0 0 0 1px var(--blaze); }
+.gun .kind { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--blaze); font-weight: 700; }
+.gun .name { font-family: var(--display); font-size: 22px; line-height: 1.05; }
+.gun .note { font-size: 15px; line-height: 1.3; color: var(--muted); }
+.stats { display: grid; grid-template-columns: auto 1fr auto; gap: 3px 8px; align-items: center; font-size: 12px; color: var(--muted); letter-spacing: .04em; }
+.stats .bar { height: 5px; background: rgba(255,255,255,.12); border-radius: 3px; overflow: hidden; }
+.stats .bar i { display: block; height: 100%; background: var(--blaze); }
+.stats b { color: var(--chalk); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
 .overlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(10,16,10,.78); padding: 16px; }
 .endcard { text-align: center; max-width: 380px; display: grid; gap: 10px; }
 .endcard h2 { font-family: var(--display); font-weight: 400; font-size: 44px; margin: 0; }
@@ -129,6 +146,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
 
   <div class="controls">
     <a class="btn" href="../">&larr; Home</a>
+    <button class="btn" id="gunBtn" type="button">Gun: <b id="gunName">.308 Bolt-action</b></button>
     <button class="btn" id="modeBtn" type="button">Start hunt</button>
     <button class="btn" id="windBtn" type="button">Wind: <b>Off</b></button>
     <button class="btn" id="soundBtn" type="button">Sound: <b>On</b></button>
@@ -145,10 +163,6 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     </div>
     <div class="seg" id="zooms" role="group" aria-label="Scope zoom">
       <span class="lbl">Scope</span>
-      <button type="button" data-zoom="1" aria-pressed="true">Off</button>
-      <button type="button" data-zoom="4" aria-pressed="false">4&times;</button>
-      <button type="button" data-zoom="8" aria-pressed="false">8&times;</button>
-      <button type="button" data-zoom="12" aria-pressed="false">12&times;</button>
     </div>
   </div>
 
@@ -163,11 +177,21 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     </div>
   </div>
 
-  <div class="keys"><b>Drag</b> aim · <b>Click/Space</b> fire · <b>Wheel/Z</b> scope<br><b>Shift</b> hold breath · <b>R</b> reload · <b>1–5</b> target</div>
+  <div class="keys"><b>Drag</b> aim · <b>Click/Space</b> fire · <b>Wheel/Z</b> scope<br><b>Shift</b> hold breath · <b>R</b> reload · <b>1–5</b> target · <b>G</b> guns</div>
   <div class="touch">
     <button class="round" id="reloadBtn" type="button">Reload</button>
     <button class="round" id="breathBtn" type="button">Breath</button>
     <button class="round fire" id="fireBtn" type="button">Fire</button>
+  </div>
+
+  <div class="locker" id="locker" hidden>
+    <div class="locker-in">
+      <div class="locker-head">
+        <div><h2>Gun locker</h2><p>Pick a gun. Each one has its own bullet speed, zero distance, magazine and kick. Keys: G opens this, Q and E switch guns.</p></div>
+        <button class="btn" id="lockerClose" type="button">Close</button>
+      </div>
+      <div class="guns" id="guns"></div>
+    </div>
   </div>
 
   <div class="overlay" id="overlay" hidden>
@@ -199,10 +223,34 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
   const rand = (a, b) => a + Math.random() * (b - a);
 
   // ---------- ballistics (game-tuned, metres and seconds) ----------
-  const MUZZLE_V = 420, G = 9.8, WIND_K = 0.6, ZERO = 100, SIGHT_H = 0.045; // barrel sits 4.5 cm under the scope
-  const ZERO_ANGLE = Math.atan((SIGHT_H + 0.5 * G * (ZERO / MUZZLE_V) ** 2) / ZERO); // sights hit dead on at 100 m
+  const G = 9.8, WIND_K = 0.6;
+  // v: muzzle speed (m/s, game-tuned) · zero: distance where sights and bullet meet · sightH: sight height above the bore
+  // cycle: seconds between shots · sway: wobble multiplier · zooms: scope powers (1 = no scope; 2 on iron-sight guns = aim down sights)
+  const GUNS = [
+    { name: '9mm Pistol', kind: 'Handgun', model: 'pistol', v: 300, zero: 25, sightH: 0.02, mag: 15, cycle: 0.2, reload: 1.3, recoil: 0.05, sway: 1.7, zooms: [1, 2], boom: 0.55,
+      note: 'Light and quick with iron sights. Best inside 50 m.' },
+    { name: '.357 Revolver', kind: 'Handgun', model: 'revolver', v: 360, zero: 25, sightH: 0.025, mag: 6, cycle: 0.45, reload: 2.4, recoil: 0.08, sway: 1.5, zooms: [1, 2], boom: 0.75,
+      note: 'Six heavy rounds and a big kick. Accurate up close.' },
+    { name: '.22 Rimfire', kind: 'Small rifle', model: 'rimfire', v: 330, zero: 50, sightH: 0.04, mag: 10, cycle: 0.3, reload: 1.4, recoil: 0.012, sway: 0.9, zooms: [1, 4], boom: 0.35, wind: 1.4,
+      note: 'Almost no recoil. Great for learning, but drops fast past 100 m.' },
+    { name: '12-gauge Pump', kind: 'Shotgun', model: 'shotgun', v: 300, zero: 30, sightH: 0.03, mag: 5, cycle: 0.9, reload: 2.4, recoil: 0.09, sway: 1.2, zooms: [1, 2], boom: 1.1, pellets: 9, spread: 0.011,
+      note: 'Fires 9 pellets that spread out. Easy hits close, useless far away.' },
+    { name: '.30-30 Lever', kind: 'Rifle', model: 'lever', v: 380, zero: 75, sightH: 0.04, mag: 6, cycle: 0.6, reload: 2.0, recoil: 0.045, sway: 1.0, zooms: [1, 4], boom: 0.85,
+      note: 'Classic woods rifle with quick follow-up shots.' },
+    { name: '.308 Bolt-action', kind: 'Rifle', model: 'bolt', v: 420, zero: 100, sightH: 0.045, mag: 5, cycle: 0.85, reload: 1.6, recoil: 0.045, sway: 1.0, zooms: [1, 4, 8, 12], boom: 0.9,
+      note: 'The all-rounder. Zeroed at 100 m.' },
+    { name: '5.56 Carbine', kind: 'Semi-auto', model: 'ar', v: 470, zero: 100, sightH: 0.065, mag: 30, cycle: 0.12, reload: 1.8, recoil: 0.02, sway: 1.1, zooms: [1, 4, 8], boom: 0.7,
+      note: 'Fast semi-auto with a 30-round magazine and a flat trajectory.' },
+    { name: '.30-06 Battle Rifle', kind: 'Semi-auto', model: 'garand', v: 440, zero: 100, sightH: 0.04, mag: 8, cycle: 0.25, reload: 1.8, recoil: 0.06, sway: 1.1, zooms: [1, 4], boom: 1.0,
+      note: 'Eight hard-hitting rounds as fast as you can aim.' },
+    { name: '.300 Magnum', kind: 'Long range', model: 'magnum', v: 520, zero: 200, sightH: 0.05, mag: 4, cycle: 1.0, reload: 1.8, recoil: 0.07, sway: 0.85, zooms: [1, 4, 8, 12, 16], boom: 1.15,
+      note: 'Zeroed at 200 m. Flat and fast for the far targets.' },
+    { name: '.50 BMG', kind: 'Anti-materiel', model: 'fifty', v: 620, zero: 300, sightH: 0.07, mag: 5, cycle: 1.3, reload: 2.8, recoil: 0.11, sway: 0.6, zooms: [1, 4, 8, 12, 16], boom: 1.4, wind: 0.6,
+      note: 'Huge and steady on its bipod. Zeroed at 300 m and shrugs off wind.' },
+  ];
+  let gun = GUNS[5], gunIndex = 5, zeroAngle = 0;
+  const zeroAngleFor = g => Math.atan((g.sightH + 0.5 * G * (g.zero / g.v) ** 2) / g.zero);
   const EYE = new V(0, 1.45, 0);
-  const MAG = 5;
 
   // ---------- renderer / scene ----------
   const gl = $('gl'), fx = $('fx'), fctx = fx.getContext('2d');
@@ -325,25 +373,60 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     });
   }
 
-  // ---------- rifle (first person) ----------
-  const rifle = new THREE.Group(); camera.add(rifle);
-  rifle.position.set(0.2, -0.21, -0.5); rifle.scale.setScalar(0.85);
-  {
-    const wood = std(0x7a4b26, { roughness: 0.55 }), metal = std(0x23262b, { metalness: 0.7, roughness: 0.35 });
-    const cyl = (r1, r2, l) => { const g = new THREE.CylinderGeometry(r1, r2, l, 16); g.rotateX(Math.PI / 2); return g; };
-    mesh(new THREE.BoxGeometry(0.055, 0.075, 0.55), wood, 0, -0.02, 0.06, rifle);
-    mesh(new THREE.BoxGeometry(0.05, 0.13, 0.2), wood, 0, -0.06, 0.27, rifle).rotation.x = 0.2;
-    mesh(new THREE.BoxGeometry(0.045, 0.05, 0.22), metal, 0, 0.03, 0.02, rifle);
-    mesh(cyl(0.011, 0.013, 0.62), metal, 0, 0.035, -0.45, rifle);
-    mesh(cyl(0.02, 0.02, 0.3), metal, 0, 0.1, 0.0, rifle);
-    mesh(cyl(0.03, 0.022, 0.08), metal, 0, 0.1, -0.17, rifle);
-    mesh(cyl(0.026, 0.02, 0.06), metal, 0, 0.1, 0.16, rifle);
-    for (const z of [-0.06, 0.08]) mesh(new THREE.BoxGeometry(0.03, 0.05, 0.02), metal, 0, 0.07, z, rifle);
-    const bolt = mesh(new THREE.SphereGeometry(0.014, 10, 8), metal, -0.05, 0.03, 0.08, rifle);
-    mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.05, 6), metal, -0.03, 0.03, 0.08, rifle).rotation.z = Math.PI / 2;
-    rifle.userData.bolt = bolt;
+  // ---------- guns (first person) ----------
+  let rifle = new THREE.Group();
+  const cyl = (r1, r2, l, seg = 16) => { const g = new THREE.CylinderGeometry(r1, r2, l, seg); g.rotateX(Math.PI / 2); return g; };
+  function buildGun(model) {
+    const g = new THREE.Group();
+    const walnut = std(0x7a4b26, { roughness: 0.55 }), birch = std(0xa8743f, { roughness: 0.55 });
+    const blued = std(0x23262b, { metalness: 0.7, roughness: 0.35 }), black = std(0x1a1c1f, { metalness: 0.3, roughness: 0.6 });
+    const olive = std(0x4b5132, { roughness: 0.7 }), steel = std(0x9aa0a6, { metalness: 0.8, roughness: 0.3 });
+    const box = (w, h, d, m, x, y, z) => mesh(new THREE.BoxGeometry(w, h, d), m, x, y, z, g);
+    const tube = (r1, r2, l, m, x, y, z) => mesh(cyl(r1, r2, l), m, x, y, z, g);
+    const scope = (r, l, y, z) => { tube(r, r, l, blued, 0, y, z); tube(r * 1.5, r, 0.07, blued, 0, y, z - l / 2); tube(r * 1.3, r, 0.05, blued, 0, y, z + l / 2);
+      box(0.025, y - 0.04, 0.02, blued, 0, y / 2 + 0.02, z - l * 0.25); box(0.025, y - 0.04, 0.02, blued, 0, y / 2 + 0.02, z + l * 0.25); };
+    if (model === 'pistol' || model === 'revolver') {
+      const m = model === 'pistol' ? black : steel;
+      box(0.032, 0.11, 0.06, model === 'pistol' ? black : walnut, 0, -0.07, 0.07).rotation.x = -0.25;
+      if (model === 'pistol') { box(0.032, 0.04, 0.2, m, 0, 0.0, -0.02); box(0.006, 0.012, 0.006, m, 0, 0.026, -0.11); }
+      else { tube(0.026, 0.026, 0.05, m, 0, -0.005, 0.01); tube(0.009, 0.01, 0.17, m, 0, 0.0, -0.1); box(0.026, 0.035, 0.07, m, 0, 0.0, 0.04); box(0.005, 0.014, 0.008, m, 0, 0.018, -0.18); }
+      box(0.008, 0.03, 0.03, m, 0, -0.04, 0.02);
+      g.userData.pos = [0.12, -0.13, -0.32];
+      return g;
+    }
+    const L = { rimfire: 0.5, shotgun: 0.7, lever: 0.52, bolt: 0.62, ar: 0.42, garand: 0.6, magnum: 0.75, fifty: 0.95 }[model];
+    const R = { rimfire: 0.008, shotgun: 0.017, lever: 0.011, bolt: 0.012, ar: 0.011, garand: 0.012, magnum: 0.013, fifty: 0.022 }[model];
+    const wood = model === 'rimfire' || model === 'shotgun' || model === 'lever' ? birch : model === 'garand' || model === 'bolt' ? walnut : model === 'magnum' ? olive : black;
+    if (model === 'ar') {
+      box(0.04, 0.06, 0.3, black, 0, 0.02, 0.02); box(0.045, 0.05, 0.22, black, 0, 0.02, -0.22);   // receiver and handguard
+      box(0.03, 0.1, 0.045, black, 0, -0.05, 0.08).rotation.x = -0.3;                           // pistol grip
+      const mag = box(0.03, 0.14, 0.05, black, 0, -0.07, -0.04); mag.rotation.x = 0.25;            // curved-ish magazine
+      box(0.04, 0.05, 0.16, black, 0, 0.0, 0.27); tube(0.012, 0.012, 0.12, black, 0, 0.02, 0.2);
+    } else {
+      box(0.055, 0.075, model === 'fifty' ? 0.4 : 0.55, wood, 0, -0.02, 0.06);
+      box(0.05, 0.13, 0.2, wood, 0, -0.06, 0.27).rotation.x = 0.2;
+      box(0.045, 0.05, 0.22, model === 'fifty' ? black : blued, 0, 0.03, 0.02);
+    }
+    tube(R, R * 1.15, L, blued, 0, 0.035, -0.12 - L / 2);
+    if (model === 'shotgun') { tube(0.012, 0.012, L * 0.75, blued, 0, 0.0, -0.1 - L * 0.375); tube(0.022, 0.022, 0.16, wood, 0, 0.0, -0.3); }
+    if (model === 'lever') { tube(0.008, 0.008, L * 0.8, blued, 0, 0.012, -0.1 - L * 0.4); const lv = mesh(new THREE.TorusGeometry(0.035, 0.006, 6, 16, Math.PI), blued, 0, -0.06, 0.1, g); lv.rotation.y = Math.PI / 2; lv.rotation.z = Math.PI; }
+    if (model === 'garand') { box(0.05, 0.05, 0.4, wood, 0, 0.0, -0.3); box(0.006, 0.018, 0.006, blued, 0, 0.06, -0.12 - L); }
+    if (model === 'rimfire') box(0.02, 0.05, 0.05, black, 0, -0.04, -0.05);
+    if (model === 'magnum' || model === 'fifty' || model === 'bolt') box(0.025, 0.05, 0.07, black, 0, -0.04, -0.05);
+    if (model === 'fifty') {
+      tube(0.035, 0.035, 0.09, black, 0, 0.035, -0.12 - L);                                         // muzzle brake
+      for (const sd of [-1, 1]) { const leg = box(0.012, 0.3, 0.012, black, sd * 0.05, -0.12, -0.55); leg.rotation.z = sd * 0.35; leg.rotation.x = 0.4; }
+    }
+    if (model === 'bolt' || model === 'magnum' || model === 'fifty') {
+      g.userData.bolt = mesh(new THREE.SphereGeometry(0.014, 10, 8), blued, -0.05, 0.03, 0.08, g);
+      mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.05, 6), blued, -0.03, 0.03, 0.08, g).rotation.z = Math.PI / 2;
+    }
+    const sc = { rimfire: [0.016, 0.26, 0.085], lever: [0.017, 0.24, 0.09], bolt: [0.02, 0.3, 0.1], ar: [0.018, 0.22, 0.11], garand: [0.017, 0.22, 0.095], magnum: [0.024, 0.36, 0.11], fifty: [0.028, 0.4, 0.13] }[model];
+    if (sc) scope(sc[0], sc[1], sc[2], model === 'ar' ? -0.02 : 0);
+    if (model === 'shotgun') box(0.006, 0.006, 0.006, steel, 0, 0.05, -0.12 - L);
+    g.userData.pos = model === 'fifty' ? [0.2, -0.24, -0.62] : [0.2, -0.21, -0.5];
+    return g;
   }
-  rifle.traverse(o => { o.castShadow = false; });
   const flash = new THREE.PointLight(0xffc06a, 0, 6); flash.position.set(0.16, -0.12, -1.1); camera.add(flash);
 
   // ---------- targets ----------
@@ -436,10 +519,23 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     for (let j = hittables.length - 1; j >= 0; j--) if (hittables[j].userData.target === t) hittables.splice(j, 1);
   }
 
+  function equipGun(i, quiet) {
+    gunIndex = (i + GUNS.length) % GUNS.length; gun = GUNS[gunIndex]; zeroAngle = zeroAngleFor(gun);
+    camera.remove(rifle); rifle = buildGun(gun.model); rifle.traverse(o => { o.castShadow = false; });
+    const p = rifle.userData.pos; rifle.position.set(p[0], p[1], p[2]); rifle.userData.home = p[2]; rifle.scale.setScalar(0.85);
+    camera.add(rifle);
+    ammo = gun.mag; reloadT = 0; cycleT = 0;
+    $('gunName').textContent = gun.name;
+    buildZoomButtons(); setZoom(1);
+    document.querySelectorAll('.gun').forEach((b, j) => b.setAttribute('aria-pressed', j === gunIndex));
+    hud();
+    if (!quiet) coach('', gun.name, `${gun.note} Zeroed at ${gun.zero} m${gun.pellets ? ', ' + gun.pellets + ' pellets per shot' : ''}.`);
+  }
+
   // ---------- state ----------
   let mode = 'practice', lane = 2, zoom = 1, windOn = false, wind = 0, sound = true;
   let yaw = 0, pitch = 0, recoil = 0, swayT = 0, breath = 1, holding = false, winded = 0;
-  let ammo = MAG, reloadT = 0, cycleT = 0, clock = 90, spawnT = 0;
+  let ammo = gun.mag, reloadT = 0, cycleT = 0, clock = 90, spawnT = 0;
   let stats = { points: 0, hits: 0, shots: 0 };
   const bullets = [], fxSprites = [];
 
@@ -480,6 +576,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     else if (k === 'r') reload();
     else if (k === 'z') stepZoom(1, true);
     else if (k === 'shift') holding = true;
+    else if (k === 'g') { $('locker').hidden ? openLocker() : ($('locker').hidden = true); }
+    else if (k === 'escape') $('locker').hidden = true;
+    else if (k === 'q') equipGun(gunIndex - 1);
+    else if (k === 'e') equipGun(gunIndex + 1);
     else if ('12345'.includes(k) && mode === 'practice') setLane(+k - 1);
     else if (k.startsWith('arrow')) {
       const s = 0.25 / 1000;   // a quarter mil per press
@@ -495,47 +595,68 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
   bb.addEventListener('pointerdown', e => { e.preventDefault(); holding = true; bb.classList.add('held'); });
   for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) bb.addEventListener(ev, () => { holding = false; bb.classList.remove('held'); });
 
-  const zoomLevels = [1, 4, 8, 12];
-  const zoomBtns = [...document.querySelectorAll('#zooms button')];
+  let zoomBtns = [];
+  const hasScope = () => gun.zooms.length > 1 && gun.zooms[1] > 2;
+  const scoped = () => zoom > 1 && hasScope();
+  function buildZoomButtons() {
+    const seg = $('zooms');
+    seg.querySelectorAll('button').forEach(b => b.remove());
+    seg.querySelector('.lbl').textContent = hasScope() ? 'Scope' : 'Sights';
+    zoomBtns = gun.zooms.map(z => {
+      const b = document.createElement('button'); b.type = 'button'; b.dataset.zoom = z;
+      b.innerHTML = z === 1 ? (hasScope() ? 'Off' : 'Hip') : z === 2 && !hasScope() ? 'Aim' : z + '&times;';
+      b.addEventListener('click', () => setZoom(z)); seg.appendChild(b); return b;
+    });
+  }
   function setZoom(z) { zoom = z; zoomBtns.forEach(b => b.setAttribute('aria-pressed', +b.dataset.zoom === z)); rifle.visible = z === 1; resize(); }
   function stepZoom(dir, wrap) {
-    let i = zoomLevels.indexOf(zoom) + dir;
-    if (wrap) i = (i + zoomLevels.length) % zoomLevels.length;
-    setZoom(zoomLevels[clamp(i, 0, zoomLevels.length - 1)]);
+    const zl = gun.zooms;
+    let i = zl.indexOf(zoom) + dir;
+    if (wrap) i = (i + zl.length) % zl.length;
+    setZoom(zl[clamp(i, 0, zl.length - 1)]);
   }
-  zoomBtns.forEach(b => b.addEventListener('click', () => setZoom(+b.dataset.zoom)));
   const laneBtns = [...document.querySelectorAll('#lanes button')];
   function setLane(i) {
     lane = i; laneBtns.forEach(b => b.setAttribute('aria-pressed', +b.dataset.lane === i));
     aimAt(paper[i]); drawCard();
-    coach('', paper[i].d + ' m target', paper[i].d === ZERO
-      ? 'Your rifle is zeroed at 100 m: put the cross on the centre and it hits the centre.'
-      : paper[i].d < ZERO ? 'Up close the bullet lands a few centimetres above the cross, because the barrel sits under the scope. Aim a touch low.'
-      : 'Past 100 m the bullet drops. Aim above the centre using the dots under the cross.');
+    const d = paper[i].d;
+    coach('', d + ' m target', d === gun.zero
+      ? `Your ${gun.name} is zeroed at ${d} m: aim at the centre and it hits the centre.`
+      : d < gun.zero ? `This gun is zeroed at ${gun.zero} m, so at ${d} m the bullet is still on its way up to meet the sights. It lands a little above where you aim.`
+      : `Past ${gun.zero} m the bullet drops. Aim above the centre${hasScope() ? ' using the dots under the cross' : ''}.`);
   }
   laneBtns.forEach(b => b.addEventListener('click', () => setLane(+b.dataset.lane)));
 
   // ---------- shooting ----------
   function fire() {
-    if (!$('overlay').hidden) return;
+    if (!$('overlay').hidden || !$('locker').hidden) return;
     if (reloadT > 0 || cycleT > 0) return;
     if (ammo === 0) { tone('click'); reload(); return; }
-    ammo--; cycleT = 0.85; stats.shots++;
+    ammo--; cycleT = gun.cycle; stats.shots++;
     const fwd = new V(0, 0, -1).applyQuaternion(camera.quaternion);
     const up = new V(0, 1, 0).applyQuaternion(camera.quaternion);
-    const dir = fwd.multiplyScalar(Math.cos(ZERO_ANGLE)).addScaledVector(up, Math.sin(ZERO_ANGLE)).normalize();
-    const b = { p: camera.position.clone().addScaledVector(up, -SIGHT_H), v: dir.multiplyScalar(MUZZLE_V), t: 0, lane: mode === 'practice' ? paper[lane] : null, cross: null,
-                sprite: new THREE.Sprite(tracerMat) };
-    b.sprite.position.copy(b.p); scene.add(b.sprite);
-    bullets.push(b);
-    recoil = 0.045; flash.intensity = 3; rifle.position.z = -0.43;
+    const right = new V(1, 0, 0).applyQuaternion(camera.quaternion);
+    const dir = fwd.multiplyScalar(Math.cos(zeroAngle)).addScaledVector(up, Math.sin(zeroAngle)).normalize();
+    const shot = { hit: false, advised: false, n: gun.pellets || 1, done: 0, landed: 0, pts: 0 };
+    for (let k = 0; k < (gun.pellets || 1); k++) {
+      const d = dir.clone();
+      if (gun.pellets) {          // random pellet inside the shotgun's spread cone
+        const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * gun.spread;
+        d.addScaledVector(right, Math.cos(a) * r).addScaledVector(up, Math.sin(a) * r).normalize();
+      }
+      const b = { p: camera.position.clone().addScaledVector(up, -gun.sightH), v: d.multiplyScalar(gun.v), t: 0, lane: mode === 'practice' ? paper[lane] : null, cross: null,
+                  shot, sprite: new THREE.Sprite(tracerMat) };
+      b.sprite.position.copy(b.p); scene.add(b.sprite);
+      bullets.push(b);
+    }
+    recoil = gun.recoil; flash.intensity = 3; rifle.position.z = rifle.userData.home + 0.07;
     tone('shot');
     if (ammo === 0) setTimeout(reload, 650);
     hud();
   }
   function reload() {
-    if (reloadT > 0 || ammo === MAG) return;
-    reloadT = 1.6; tone('reload'); hud();
+    if (reloadT > 0 || ammo === gun.mag) return;
+    reloadT = gun.reload; tone('reload'); hud();
   }
   const tracerMat = new THREE.SpriteMaterial({ map: canvasTex(64, 64, (g, w) => { const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, 'rgba(255,240,190,1)'); r.addColorStop(1, 'rgba(255,200,90,0)'); g.fillStyle = r; g.fillRect(0, 0, w, w); }),
     blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
@@ -550,7 +671,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
       let done = false;
       for (let s = 0; s < SUB && !done; s++) {
         const prev = b.p.clone();
-        b.v.y -= G * h; b.v.x += wind * WIND_K * h;
+        b.v.y -= G * h; b.v.x += wind * WIND_K * (gun.wind || 1) * h;
         b.p.addScaledVector(b.v, h); b.t += h;
         // remember where it crossed the chosen paper target's plane (for coaching on misses)
         if (b.lane && !b.cross && prev.z > -b.lane.d && b.p.z <= -b.lane.d) {
@@ -562,11 +683,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
         const hit = ray.intersectObjects(hittables, false)[0];
         if (hit) { impact(b, hit.object, hit.point); done = true; }
         else if (b.p.y <= 0) { impact(b, null, b.p.clone().setY(0.02)); done = true; }
-        else if (b.t > 2.5) done = true;
+        else if (b.t > (gun.pellets ? 0.45 : 2.5)) done = true;   // pellets lose their punch after ~130 m
       }
       b.sprite.position.copy(b.p);
       const dist = b.p.distanceTo(camera.position); b.sprite.scale.setScalar(0.04 + dist * 0.0035);
-      if (done) { scene.remove(b.sprite); bullets.splice(i, 1); }
+      if (done) { scene.remove(b.sprite); bullets.splice(i, 1); if (++b.shot.done === b.shot.n && b.shot.n > 1) pelletSummary(b.shot); }
     }
   }
   function puff(p, color, size) {
@@ -582,23 +703,28 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
       return;
     }
     if (kind === 'board') { puff(p, 0xc9b48a, 0.3 + dist * 0.004); missed(b, p); return; }
-    stats.hits++;
+    const firstHit = !b.shot.hit;
+    if (firstHit) stats.hits++;
+    b.shot.hit = true;
+    const share = b.shot.n > 1 ? 1 / 3 : 1;   // shotgun pellets each score a third
+    if (b.shot.n > 1) b.shot.landed++;
     if (kind === 'face') {
       const local = t.root.worldToLocal(p.clone()); local.y -= t.H;
       const r = Math.hypot(local.x, local.y), ring = clamp(10 - Math.floor(r / t.R * 10), 0, 10);
-      if (ring === 0) { stats.hits--; missed(b, p); return; }
+      if (ring === 0) { if (firstHit) { stats.hits--; b.shot.hit = false; } if (b.shot.n > 1) b.shot.landed--; missed(b, p); return; }
       const mult = t.d <= 50 ? 1 : t.d <= 100 ? 2 : t.d <= 200 ? 3 : 4;
-      const pts = ring * mult;
+      const pts = Math.ceil(ring * mult * share);
       stats.points += pts;
       const hole = mesh(new THREE.CircleGeometry(0.03 * t.R / 0.25, 12), new THREE.MeshBasicMaterial({ color: 0xffd23a }), local.x, local.y + t.H, 0.04, t.root);
       hole.castShadow = false;
       t.holes.push([local.x / t.R, local.y / t.R]);
       setTimeout(() => { tone('paper'); }, delay);
       popup(p, ring === 10 ? 'BULLSEYE +' + pts : ring + ' +' + pts, ring >= 9 ? 'var(--good)' : 'var(--blaze)');
-      adviseOffset(t.d, local.x, local.y, ring);
+      b.shot.pts += pts;
+      if (b.shot.n === 1) adviseOffset(t.d, local.x, local.y, ring);
       drawCard();
     } else if (kind === 'gong') {
-      const mult = t.d <= 100 ? 1 : t.d <= 200 ? 2 : 3, pts = 15 * mult;
+      const mult = t.d <= 100 ? 1 : t.d <= 200 ? 2 : 3, pts = Math.ceil(15 * mult * share);
       stats.points += pts; t.swingV = 3.5 + Math.random();
       puff(p, 0xfff0c0, 0.2 + dist * 0.003);
       setTimeout(() => tone('steel'), delay);
@@ -608,7 +734,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
       const local = t.flip.worldToLocal(p.clone());
       const [vx, vy, vr] = t.S.vital, vital = Math.hypot(local.x - vx, local.y - vy) < vr;
       const mult = t.d <= 100 ? 1 : t.d <= 200 ? 2 : 3;
-      const pts = Math.round((vital ? 25 : 10) * mult * (t.moving ? 1.5 : 1));
+      const pts = Math.ceil((vital ? 25 : 10) * mult * (t.moving ? 1.5 : 1) * share);
       stats.points += pts;
       t.state = 'fall'; t.t = 0;
       const i = hittables.indexOf(t.body); if (i >= 0) hittables.splice(i, 1);
@@ -620,7 +746,15 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     }
     hud();
   }
+  function pelletSummary(shot) {
+    const n = shot.landed;
+    coach(n ? 'good' : 'bad', n ? `${n} of ${shot.n} pellets hit` : 'All pellets missed',
+      n >= 6 ? 'Tight pattern. That is the shotgun sweet spot.'
+      : n ? 'The pattern spreads wider the further away the target is. Get closer targets for more pellets on.'
+      : 'Past about 50 m most pellets miss. Shotguns are for close targets.');
+  }
   function missed(b, p) {
+    if (b.shot.n > 1 || b.shot.hit) { hud(); return; }
     if (b.lane) {
       const t = b.lane, c = b.cross || p;
       const local = t.root.worldToLocal(c.clone()); local.y -= t.H;
@@ -634,11 +768,12 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     const milX = dx / d * 1000, milY = dy / d * 1000;
     const cm = v => Math.abs(v) >= 1 ? Math.abs(v).toFixed(1) + ' m' : Math.round(Math.abs(v) * 100) + ' cm';
     const parts = [], fixes = [];
-    if (Math.abs(milY) >= 0.3) { parts.push(cm(dy) + (dy < 0 ? ' low' : ' high')); fixes.push(`hold ${Math.abs(milY).toFixed(1)} dots ${dy < 0 ? 'higher' : 'lower'}`); }
-    if (Math.abs(milX) >= 0.3) { parts.push(cm(dx) + (dx < 0 ? ' left' : ' right')); fixes.push(`${Math.abs(milX).toFixed(1)} dots ${dx < 0 ? 'right' : 'left'}`); }
+    const dots = hasScope();   // scoped guns get mil-dot holds, iron sights get centimetres
+    if (Math.abs(milY) >= 0.3) { parts.push(cm(dy) + (dy < 0 ? ' low' : ' high')); fixes.push(dots ? `hold ${Math.abs(milY).toFixed(1)} dots ${dy < 0 ? 'higher' : 'lower'}` : `aim ${cm(dy)} ${dy < 0 ? 'higher' : 'lower'}`); }
+    if (Math.abs(milX) >= 0.3) { parts.push(cm(dx) + (dx < 0 ? ' left' : ' right')); fixes.push(dots ? `${Math.abs(milX).toFixed(1)} dots ${dx < 0 ? 'right' : 'left'}` : `${cm(dx)} ${dx < 0 ? 'right' : 'left'}`); }
     if (!parts.length) { coach('good', ring === 10 ? 'Bullseye' : 'Centred', 'Right where you aimed. Keep that hold for this distance.'); return; }
     const head = ring ? `${ring} ring` : 'Missed the target';
-    coach(ring >= 8 ? 'good' : 'bad', head, `${ring ? 'Landed' : 'It passed'} ${parts.join(' and ')}. Next shot, ${fixes.join(' and ')} (1 dot = 1 mil = ${d / 10} cm at ${d} m).`);
+    coach(ring >= 8 ? 'good' : 'bad', head, `${ring ? 'Landed' : 'It passed'} ${parts.join(' and ')}. Next shot, ${fixes.join(' and ')}${dots ? ` (1 dot = 1 mil = ${d / 10} cm at ${d} m)` : ''}.`);
   }
 
   // ---------- hunt mode ----------
@@ -697,9 +832,30 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     $('ovText').textContent = `${stats.hits} hits from ${stats.shots} shots (${acc}% accuracy)`;
     $('overlay').hidden = false; clearHunt();
   }
-  function resetStats() { stats = { points: 0, hits: 0, shots: 0 }; ammo = MAG; reloadT = 0; }
+  function resetStats() { stats = { points: 0, hits: 0, shots: 0 }; ammo = gun.mag; reloadT = 0; }
   function newWind() { wind = windOn ? Math.round(rand(1, 6)) * (Math.random() < 0.5 ? -1 : 1) : 0; hud(); }
 
+  function buildLocker() {
+    const maxV = 620, maxMag = 30;
+    $('guns').innerHTML = '';
+    GUNS.forEach((g, i) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'gun';
+      const rate = Math.round(60 / g.cycle);
+      b.innerHTML = `<span class="kind">${g.kind}</span><span class="name">${g.name}</span><span class="note">${g.note}</span>
+        <span class="stats">
+          <span>Speed</span><span class="bar"><i style="width:${g.v / maxV * 100}%"></i></span><b>${g.v} m/s</b>
+          <span>Zero</span><span class="bar"><i style="width:${g.zero / 300 * 100}%"></i></span><b>${g.zero} m</b>
+          <span>Magazine</span><span class="bar"><i style="width:${g.mag / maxMag * 100}%"></i></span><b>${g.mag}</b>
+          <span>Fire rate</span><span class="bar"><i style="width:${Math.min(100, rate / 500 * 100)}%"></i></span><b>${rate}/min</b>
+          <span>Scope</span><span class="bar"><i style="width:${Math.max(...g.zooms) / 16 * 100}%"></i></span><b>${Math.max(...g.zooms) > 2 ? 'up to ' + Math.max(...g.zooms) + '×' : 'Iron sights'}</b>
+        </span>`;
+      b.addEventListener('click', () => { equipGun(i); $('locker').hidden = true; });
+      $('guns').appendChild(b);
+    });
+  }
+  const openLocker = () => { $('locker').hidden = false; document.querySelectorAll('.gun').forEach((b, j) => b.setAttribute('aria-pressed', j === gunIndex)); };
+  $('gunBtn').addEventListener('click', openLocker);
+  $('lockerClose').addEventListener('click', () => { $('locker').hidden = true; });
   $('modeBtn').addEventListener('click', () => mode === 'practice' ? startHunt() : startPractice());
   $('againBtn').addEventListener('click', startHunt);
   $('practiceBtn').addEventListener('click', startPractice);
@@ -713,7 +869,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
   function hud() {
     $('score').textContent = stats.points;
     $('hits').textContent = stats.hits + '/' + stats.shots;
-    $('ammo').textContent = reloadT > 0 ? 'Reload' : ammo + '/' + MAG;
+    $('ammo').textContent = reloadT > 0 ? 'Reload' : ammo + '/' + gun.mag;
     $('wind').textContent = wind ? Math.abs(wind) + ' m/s ' + (wind > 0 ? '→' : '←') : 'Calm';
     $('windBtn').innerHTML = 'Wind: <b>' + (windOn ? 'On' : 'Off') + '</b>';
     $('soundBtn').innerHTML = 'Sound: <b>' + (sound ? 'On' : 'Off') + '</b>';
@@ -751,12 +907,21 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     const dpr = Math.min(devicePixelRatio || 1, 2), W = innerWidth, H = innerHeight;
     fctx.setTransform(dpr, 0, 0, dpr, 0, 0); fctx.clearRect(0, 0, W, H);
     const cx = W / 2, cy = H / 2;
-    if (zoom === 1) {
+    if (zoom > 1 && !hasScope()) {      // aiming down iron sights: rear notch with the front post in it
+      fctx.fillStyle = 'rgba(20,20,20,.92)';
+      fctx.fillRect(cx - 46, cy + 4, 38, 14); fctx.fillRect(cx + 8, cy + 4, 38, 14);
+      fctx.fillRect(cx - 3, cy + 2, 6, 44);
+      fctx.fillStyle = '#ff7a1a'; fctx.beginPath(); fctx.arc(cx, cy + 2, 3, 0, 7); fctx.fill();
+      if (gun.pellets) { const pr = gun.spread / Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * H / 2;
+        fctx.strokeStyle = 'rgba(255,255,255,.35)'; fctx.setLineDash([4, 6]); fctx.beginPath(); fctx.arc(cx, cy, pr, 0, 7); fctx.stroke(); fctx.setLineDash([]); }
+    } else if (!scoped()) {
       fctx.strokeStyle = 'rgba(255,255,255,.9)'; fctx.lineWidth = 2;
       for (const [a, b] of [[[-14, 0], [-5, 0]], [[5, 0], [14, 0]], [[0, -14], [0, -5]], [[0, 5], [0, 14]]]) {
         fctx.beginPath(); fctx.moveTo(cx + a[0], cy + a[1]); fctx.lineTo(cx + b[0], cy + b[1]); fctx.stroke();
       }
       fctx.fillStyle = '#ff7a1a'; fctx.beginPath(); fctx.arc(cx, cy, 2, 0, 7); fctx.fill();
+      if (gun.pellets) { const pr = gun.spread / Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * H / 2;
+        fctx.strokeStyle = 'rgba(255,255,255,.35)'; fctx.setLineDash([4, 6]); fctx.beginPath(); fctx.arc(cx, cy, pr, 0, 7); fctx.stroke(); fctx.setLineDash([]); }
     } else {
       const R = Math.min(W, H) * 0.46;
       fctx.fillStyle = '#050705';
@@ -790,7 +955,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
       fctx.fillStyle = 'rgba(255,255,255,.18)'; fctx.fillRect(bx, by, bw, 6);
       fctx.fillStyle = winded > 0 ? '#ff6b5a' : holding ? '#8fd16b' : '#f1ede4'; fctx.fillRect(bx, by, bw * breath, 6);
     }
-    if (zoom === 1 && mode === 'hunt') {   // spotting markers so you know where to scope in
+    if (!scoped() && mode === 'hunt') {   // spotting markers so you know where to scope in
       fctx.font = '600 13px "Barlow Condensed", sans-serif'; fctx.textAlign = 'center';
       for (const t of targets) {
         if (t.type === 'paper' || t.state === 'fall' || t.state === 'hide') continue;
@@ -801,9 +966,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
         fctx.fillStyle = 'rgba(241,237,228,.95)'; fctx.fillText(Math.round(t.d) + ' m', x, y - 14);
       }
     }
-    if (zoom === 1 && rangeText) {
+    if (!scoped() && rangeText) {
       fctx.font = '600 14px "Barlow Condensed", sans-serif'; fctx.textAlign = 'center'; fctx.fillStyle = 'rgba(241,237,228,.9)';
-      fctx.fillText(rangeText, cx, cy + 34);
+      fctx.fillText(rangeText, cx, cy + (zoom > 1 ? 66 : 34));
     }
     if (reloadT > 0) { fctx.font = '700 18px "Barlow Condensed", sans-serif'; fctx.fillStyle = '#ff7a1a'; fctx.textAlign = 'center'; fctx.fillText('RELOADING', cx, cy - 40); }
   }
@@ -824,16 +989,16 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     if (holding && winded <= 0 && breath > 0) { breath = Math.max(0, breath - dt / 4.5); if (breath === 0) winded = 2.5; }
     else { if (winded > 0) winded -= dt; breath = Math.min(1, breath + dt / 3); }
     const steady = holding && winded <= 0 && breath > 0 ? 0.12 : winded > 0 ? 2.2 : 1;
-    const amp = (zoom === 1 ? 0.0012 : 0.0016) * steady;
+    const amp = (zoom === 1 ? 0.0012 : 0.0016) * steady * gun.sway;
     const sx = Math.sin(swayT * 0.83) * amp + Math.sin(swayT * 2.1) * amp * 0.35;
     const sy = Math.sin(swayT * 1.17 + 1) * amp * 0.8 + Math.cos(swayT * 2.7) * amp * 0.25;
     recoil *= Math.exp(-dt * 9);
     camera.rotation.set(pitch + sy + recoil, yaw + sx, 0);
     camera.updateMatrixWorld();
 
-    if (cycleT > 0) { cycleT -= dt; rifle.userData.bolt.position.z = 0.08 + Math.max(0, Math.sin((0.85 - cycleT) / 0.85 * Math.PI)) * 0.06; }
-    if (reloadT > 0) { reloadT -= dt; rifle.rotation.z = Math.sin(Math.min(1, (1.6 - reloadT) / 1.6) * Math.PI) * 0.5; if (reloadT <= 0) { reloadT = 0; ammo = MAG; rifle.rotation.z = 0; hud(); } }
-    rifle.position.z = lerp(rifle.position.z, -0.5, 1 - Math.exp(-dt * 10));
+    if (cycleT > 0) { cycleT -= dt; if (rifle.userData.bolt) rifle.userData.bolt.position.z = 0.08 + Math.max(0, Math.sin((gun.cycle - cycleT) / gun.cycle * Math.PI)) * 0.06; }
+    if (reloadT > 0) { reloadT -= dt; rifle.rotation.z = Math.sin(Math.min(1, (gun.reload - reloadT) / gun.reload) * Math.PI) * 0.5; if (reloadT <= 0) { reloadT = 0; ammo = gun.mag; rifle.rotation.z = 0; hud(); } }
+    rifle.position.z = lerp(rifle.position.z, rifle.userData.home, 1 - Math.exp(-dt * 10));
     flash.intensity = Math.max(0, flash.intensity - dt * 30);
 
     stepBullets(dt);
@@ -869,10 +1034,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     if (!sound || !ac) return;
     const t = ac.currentTime, g = ac.createGain(); g.connect(ac.destination);
     if (kind === 'shot') {
-      const n = noise(0.9), f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(2400, t); f.frequency.exponentialRampToValueAtTime(300, t + 0.6);
-      n.connect(f); f.connect(g); g.gain.setValueAtTime(0.9, t); n.start(t);
-      const o = ac.createOscillator(), og = ac.createGain(); o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(35, t + 0.25);
-      og.gain.setValueAtTime(0.8, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.3); o.connect(og); og.connect(ac.destination); o.start(t); o.stop(t + 0.3);
+      const k = gun.boom;   // bigger guns: louder, deeper, longer
+      const n = noise(0.4 + k * 0.5), f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(3600 - k * 1500, t); f.frequency.exponentialRampToValueAtTime(300, t + 0.3 + k * 0.3);
+      n.connect(f); f.connect(g); g.gain.setValueAtTime(0.4 + k * 0.45, t); n.start(t);
+      const o = ac.createOscillator(), og = ac.createGain(); o.frequency.setValueAtTime(140 - k * 55, t); o.frequency.exponentialRampToValueAtTime(35, t + 0.25);
+      og.gain.setValueAtTime(0.3 + k * 0.5, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.3); o.connect(og); og.connect(ac.destination); o.start(t); o.stop(t + 0.3);
     } else if (kind === 'steel') {
       for (const [fq, v] of [[880, 0.3], [1320, 0.15], [2140, 0.08]]) {
         const o = ac.createOscillator(), og = ac.createGain(); o.type = 'sine'; o.frequency.value = fq;
@@ -899,16 +1065,17 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     camera.aspect = w / h; camera.fov = base / zoom; camera.updateProjectionMatrix();
   }
   addEventListener('resize', resize);
+  buildLocker(); equipGun(5, true);
   resize(); hud(); drawCard();
   // test hook: lets an automated check aim and shoot without dragging
   window.__range = { aim(y, p) { yaw = y; pitch = p; }, get state() { return { yaw, pitch, ammo, stats: { ...stats }, bullets: bullets.length, reloadT }; },
     testShot() {   // fires one steady shot and runs it to the end instantly
-      cycleT = 0; reloadT = 0; ammo = MAG;
+      cycleT = 0; reloadT = 0; ammo = gun.mag;
       camera.rotation.set(pitch, yaw, 0); camera.updateMatrixWorld(); fire();
       for (let i = 0; i < 400 && bullets.length; i++) stepBullets(1 / 60);
       cycleT = 0; return $('coachTag').textContent + ' | ' + $('coachText').textContent;
     },
-    fire, setLane, setZoom, startHunt, paper, targets, spawnAnimal, spawnGong, laneX, EYE, holdBreath(v) { holding = v; } };
+    fire, setLane, setZoom, equipGun, GUNS, get gun() { return gun; }, startHunt, paper, targets, spawnAnimal, spawnGong, laneX, EYE, holdBreath(v) { holding = v; } };
   requestAnimationFrame(frame);
 })();
 </script>
