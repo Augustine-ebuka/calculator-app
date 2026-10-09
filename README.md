@@ -19,11 +19,13 @@ The updateDisplay method is used to update the display elements in the DOM with 
 
 The Calculator class is used in the rest of the code you provided to create a calculator that can.
 
-## Hoop Shot (basketball/)
-A browser basketball shooting game. Open `basketball/index.html` in any browser, no build step.
+## Hoop Shot 3D (basketball/)
+A 3D basketball shooting game built with three.js. Open `basketball/index.html` in any browser (it loads three.js from a CDN, so you need to be online). The earlier 2D version is in `basketball/2d.html`.
 
-- Press on the court and pull back like a slingshot, then let go to shoot. A longer pull means more power.
+- Press anywhere and drag down, then let go to shoot. A longer pull means more power.
+- Pull sideways to aim. The ball flies the opposite way, like a slingshot.
+- The player crouches as you pull, then jumps and releases the ball at the top of the jump.
+- Camera views: Behind, Front, Side, High and Ball cam (keys 1-5, or V to cycle).
 - The dotted aim guide shows the arc. Switch it to Short or Off as you get better.
-- After each miss the coach tells you what went wrong (too flat, short, long, rimmed out) and you stay on the same spot to adjust.
-- Threes count 3 points and a swish (no rim, no backboard) adds a bonus point.
-- Try the 60-second challenge once you're comfortable.
+- After a miss the coach tells you what went wrong (short, long, left, right, rimmed out), and you stay on the same spot to adjust.
+- Threes count 3 points and a swish adds a bonus point. Try the 60-second challenge once you're comfortable.
