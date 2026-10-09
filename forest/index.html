@@ -105,7 +105,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
 .stats .bar i { display: block; height: 100%; background: var(--blaze); }
 .stats b { color: var(--chalk); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
 .overlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(10,16,10,.78); padding: 16px; }
-.endcard { text-align: center; max-width: 380px; display: grid; gap: 10px; }
+.endcard { text-align: center; max-width: 440px; display: grid; gap: 10px; }
+.endcard .eyebrow { font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: var(--blaze); font-weight: 700; }
+.endcard ul { text-align: left; margin: 4px 0; padding: 12px 16px 12px 32px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; display: grid; gap: 6px; font-size: 16px; line-height: 1.3; }
+.overlay { z-index: 4; } .locker { z-index: 5; }
 .endcard h2 { font-family: var(--display); font-weight: 400; font-size: 44px; margin: 0; }
 .endcard p { margin: 0; color: var(--muted); font-size: 18px; }
 .endcard .big { font-family: var(--display); font-size: 72px; color: var(--blaze); line-height: 1; }
@@ -141,6 +144,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     <div class="cell"><span class="lbl">Hits</span><span class="num" id="hits">0/0</span></div>
     <div class="cell"><span class="lbl">Ammo</span><span class="num plain" id="ammo">5/5</span></div>
     <div class="cell"><span class="lbl">Wind</span><span class="num plain" id="wind">Calm</span></div>
+    <div class="cell" id="levelCell" hidden><span class="lbl">Level</span><span class="num" id="levelNum">1</span></div>
+    <div class="cell" id="killCell" hidden><span class="lbl">Animals</span><span class="num" id="killNum">0/3</span></div>
     <div class="cell" id="clockCell" hidden><span class="lbl">Clock</span><span class="num plain" id="clock">90</span></div>
   </div>
 
@@ -196,12 +201,14 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
 
   <div class="overlay" id="overlay" hidden>
     <div class="endcard">
-      <h2>Hunt over</h2>
-      <div class="big" id="ovScore">0</div>
+      <span class="eyebrow" id="ovEyebrow"></span>
+      <h2 id="ovTitle"></h2>
+      <div class="big" id="ovBig"></div>
       <p id="ovText"></p>
+      <ul id="ovList"></ul>
       <div class="row">
-        <button id="againBtn" type="button">Hunt again</button>
-        <button id="practiceBtn" class="ghost" type="button">Practice range</button>
+        <button id="ovPrimary" type="button"></button>
+        <button id="ovSecondary" class="ghost" type="button"></button>
       </div>
     </div>
   </div>
@@ -267,7 +274,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
   camera.rotation.order = 'YXZ'; camera.position.copy(EYE);
   scene.add(camera);
 
-  scene.add(new THREE.HemisphereLight(0xd8ecff, 0x3d4a26, 0.75));
+  scene.add(new THREE.HemisphereLight(0xd8ecff, 0x3d4a26, 0.45));
   const sun = new THREE.DirectionalLight(0xfff0d0, 1.25);
   sun.position.set(-50, 90, 30); sun.target.position.set(0, 0, -40);
   sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
@@ -294,7 +301,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     const pos = geo.attributes.position;
     for (let i = 0; i < pos.count; i++) { const t = clamp(pos.getY(i) / 900, 0, 1); const c = hor.clone().lerp(top, Math.pow(t, 0.6)); cols.push(c.r, c.g, c.b); }
     geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
-    scene.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })));
+    const sky = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }));
+    scene.add(sky);
+    // image-based lighting from the sky so metal and wet surfaces have something to reflect
+    const envScene = new THREE.Scene(), envSky = sky.clone(); envSky.scale.setScalar(0.005); envScene.add(envSky);
+    const envGround = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshBasicMaterial({ color: 0x55682f })); envGround.rotation.x = -Math.PI / 2; envGround.position.y = -1.5; envScene.add(envGround);
+    const envSun = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 8), new THREE.MeshBasicMaterial({ color: 0xfff4d8 })); envSun.position.set(-4, 6, -5); envScene.add(envSun);
+    scene.environment = new THREE.PMREMGenerator(renderer).fromScene(envScene, 0.03).texture;
     const sunTex = canvasTex(128, 128, (g, w) => { const r = g.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(255,250,230,1)'); r.addColorStop(.25, 'rgba(255,240,200,.8)'); r.addColorStop(1, 'rgba(255,240,200,0)'); g.fillStyle = r; g.fillRect(0, 0, w, w); });
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: sunTex, fog: false, depthWrite: false, transparent: true }));
     s.position.set(-900, 1100, -1300); s.scale.set(380, 380, 1); scene.add(s);
@@ -374,59 +387,207 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
   }
 
   // ---------- guns (first person) ----------
+  // Guns are modelled in "forward" units: f grows toward the muzzle (local -z), y is up, the butt sits near the camera.
   let rifle = new THREE.Group();
-  const cyl = (r1, r2, l, seg = 16) => { const g = new THREE.CylinderGeometry(r1, r2, l, seg); g.rotateX(Math.PI / 2); return g; };
+  const woodTex = (base, dark, light) => canvasTex(512, 64, (g, w, h) => {
+    g.fillStyle = base; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 70; i++) {           // flowing grain lines
+      const y0 = Math.random() * h, amp = rand(1, 6), fq = rand(0.004, 0.02), ph = rand(0, 6);
+      g.strokeStyle = Math.random() < 0.6 ? dark : light; g.globalAlpha = rand(0.15, 0.45); g.lineWidth = rand(0.6, 2);
+      g.beginPath(); for (let x = 0; x <= w; x += 8) { const y = y0 + Math.sin(x * fq + ph) * amp; x ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke();
+    }
+    g.globalAlpha = 1;
+  });
+  const MAT = {};
+  function gunMats() {
+    if (MAT.walnut) return MAT;
+    Object.assign(MAT, {
+      walnut: std(0xffffff, { map: woodTex('#5a3318', '#2e170a', '#8a5a32'), roughness: 0.42 }),
+      birch: std(0xffffff, { map: woodTex('#a86b38', '#6a3d1a', '#d2a067'), roughness: 0.45 }),
+      blued: std(0x1d2026, { metalness: 0.9, roughness: 0.3 }),
+      steel: std(0xb8bec4, { metalness: 1, roughness: 0.22 }),
+      park: std(0x2a2d31, { metalness: 0.55, roughness: 0.5 }),
+      poly: std(0x1b1c1e, { roughness: 0.75 }),
+      olive: std(0x4c5235, { roughness: 0.8 }),
+      tan: std(0x8f7b58, { roughness: 0.8 }),
+      rubber: std(0x111111, { roughness: 0.95 }),
+      brass: std(0xc9a24a, { metalness: 1, roughness: 0.3 }),
+      glass: std(0x1d3550, { metalness: 0.9, roughness: 0.05 }),
+      bead: std(0xf2efe6, { metalness: 0.4, roughness: 0.3 }),
+    });
+    return MAT;
+  }
   function buildGun(model) {
-    const g = new THREE.Group();
-    const walnut = std(0x7a4b26, { roughness: 0.55 }), birch = std(0xa8743f, { roughness: 0.55 });
-    const blued = std(0x23262b, { metalness: 0.7, roughness: 0.35 }), black = std(0x1a1c1f, { metalness: 0.3, roughness: 0.6 });
-    const olive = std(0x4b5132, { roughness: 0.7 }), steel = std(0x9aa0a6, { metalness: 0.8, roughness: 0.3 });
-    const box = (w, h, d, m, x, y, z) => mesh(new THREE.BoxGeometry(w, h, d), m, x, y, z, g);
-    const tube = (r1, r2, l, m, x, y, z) => mesh(cyl(r1, r2, l), m, x, y, z, g);
-    const scope = (r, l, y, z) => { tube(r, r, l, blued, 0, y, z); tube(r * 1.5, r, 0.07, blued, 0, y, z - l / 2); tube(r * 1.3, r, 0.05, blued, 0, y, z + l / 2);
-      box(0.025, y - 0.04, 0.02, blued, 0, y / 2 + 0.02, z - l * 0.25); box(0.025, y - 0.04, 0.02, blued, 0, y / 2 + 0.02, z + l * 0.25); };
-    if (model === 'pistol' || model === 'revolver') {
-      const m = model === 'pistol' ? black : steel;
-      box(0.032, 0.11, 0.06, model === 'pistol' ? black : walnut, 0, -0.07, 0.07).rotation.x = -0.25;
-      if (model === 'pistol') { box(0.032, 0.04, 0.2, m, 0, 0.0, -0.02); box(0.006, 0.012, 0.006, m, 0, 0.026, -0.11); }
-      else { tube(0.026, 0.026, 0.05, m, 0, -0.005, 0.01); tube(0.009, 0.01, 0.17, m, 0, 0.0, -0.1); box(0.026, 0.035, 0.07, m, 0, 0.0, 0.04); box(0.005, 0.014, 0.008, m, 0, 0.018, -0.18); }
-      box(0.008, 0.03, 0.03, m, 0, -0.04, 0.02);
-      g.userData.pos = [0.12, -0.13, -0.32];
-      return g;
-    }
-    const L = { rimfire: 0.5, shotgun: 0.7, lever: 0.52, bolt: 0.62, ar: 0.42, garand: 0.6, magnum: 0.75, fifty: 0.95 }[model];
-    const R = { rimfire: 0.008, shotgun: 0.017, lever: 0.011, bolt: 0.012, ar: 0.011, garand: 0.012, magnum: 0.013, fifty: 0.022 }[model];
-    const wood = model === 'rimfire' || model === 'shotgun' || model === 'lever' ? birch : model === 'garand' || model === 'bolt' ? walnut : model === 'magnum' ? olive : black;
-    if (model === 'ar') {
-      box(0.04, 0.06, 0.3, black, 0, 0.02, 0.02); box(0.045, 0.05, 0.22, black, 0, 0.02, -0.22);   // receiver and handguard
-      box(0.03, 0.1, 0.045, black, 0, -0.05, 0.08).rotation.x = -0.3;                           // pistol grip
-      const mag = box(0.03, 0.14, 0.05, black, 0, -0.07, -0.04); mag.rotation.x = 0.25;            // curved-ish magazine
-      box(0.04, 0.05, 0.16, black, 0, 0.0, 0.27); tube(0.012, 0.012, 0.12, black, 0, 0.02, 0.2);
+    const g = new THREE.Group(), M = gunMats();
+    const at = (geo, m, f, y, x = 0) => mesh(geo, m, x, y, -f, g);
+    // side-profile extrusion: pts are [forward, y]
+    const prof = (pts, width, m, bevel = 0.004, x = 0) => {
+      const sh = new THREE.Shape(pts.map(([f, y]) => new THREE.Vector2(f, y)));
+      const depth = Math.max(0.001, width - 2 * bevel);
+      const geo = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: bevel > 0, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 2, curveSegments: 6 });
+      geo.translate(0, 0, -depth / 2); geo.rotateY(Math.PI / 2);
+      return mesh(geo, m, x, 0, 0, g);
+    };
+    // tube along the barrel axis from f0 (rear) to f1 (front)
+    const tubeF = (rRear, rFront, f0, f1, y, m, seg = 20, x = 0) => {
+      const geo = new THREE.CylinderGeometry(rRear, rFront, f1 - f0, seg); geo.rotateX(Math.PI / 2);
+      return mesh(geo, m, x, y, -(f0 + f1) / 2, g);
+    };
+    const box = (w, h, len, m, f, y, x = 0) => at(new THREE.BoxGeometry(w, h, len), m, f, y, x);
+    const ring = (r, tube, m, f, y) => at(new THREE.TorusGeometry(r, tube, 8, 24), m, f, y);
+    const guard = (f, y, r = 0.022) => {      // trigger guard and trigger
+      const geo = new THREE.TorusGeometry(r, 0.0032, 6, 18, Math.PI); geo.rotateZ(Math.PI); geo.rotateY(Math.PI / 2);
+      mesh(geo, M.park, 0, y, -f, g);
+      box(0.005, 0.026, 0.006, M.steel, f - 0.004, y - 0.006).rotation.x = -0.35;
+    };
+    const swivel = (f, y) => { const s = at(new THREE.TorusGeometry(0.008, 0.0018, 6, 12), M.steel, f, y); s.rotation.y = Math.PI / 2; };
+    const scope = (f0, f1, y, rMain, rObj, rEye, baseY) => {
+      tubeF(rEye, rEye * 0.95, f0, f0 + 0.065, y, M.blued);
+      tubeF(rEye * 0.95, rMain, f0 + 0.065, f0 + 0.1, y, M.blued);
+      tubeF(rMain, rMain, f0 + 0.1, f1 - 0.11, y, M.blued);
+      tubeF(rMain, rObj, f1 - 0.11, f1 - 0.06, y, M.blued);
+      tubeF(rObj, rObj, f1 - 0.06, f1, y, M.blued);
+      const mid = (f0 + f1) / 2 - 0.01;
+      at(new THREE.CylinderGeometry(0.011, 0.011, 0.024, 16), M.blued, mid, y + rMain + 0.01);             // elevation turret
+      const wt = at(new THREE.CylinderGeometry(0.011, 0.011, 0.024, 16), M.blued, mid, y, rMain + 0.01); wt.rotation.z = Math.PI / 2; // windage turret
+      for (const end of [[f0, rEye * 0.85, Math.PI], [f1, rObj * 0.9, 0]]) {
+        const lens = at(new THREE.CircleGeometry(end[1], 20), M.glass, end[0] + (end[2] ? -0.001 : 0.001), y); lens.rotation.y = end[2];
+      }
+      for (const f of [f0 + 0.13, f1 - 0.15]) {          // rings and bases
+        ring(rMain + 0.003, 0.004, M.blued, f, y);
+        box(0.018, y - baseY, 0.018, M.blued, f, (y + baseY) / 2);
+      }
+    };
+    let muzzle = 0.8, boreY = 0.025;
+
+    if (model === 'pistol') {
+      prof([[-0.03, -0.11], [-0.002, -0.11], [0.018, -0.012], [0.135, -0.012], [0.135, 0.001], [-0.045, 0.001], [-0.05, -0.018], [-0.04, -0.06]], 0.03, M.poly, 0.004);
+      prof([[-0.046, 0.0], [0.14, 0.0], [0.142, 0.028], [-0.044, 0.028]], 0.027, M.park, 0.003);
+      for (let i = 0; i < 6; i++) box(0.028, 0.02, 0.002, M.poly, -0.035 + i * 0.006, 0.014);      // slide serrations
+      box(0.004, 0.008, 0.006, M.poly, 0.13, 0.033); box(0.016, 0.007, 0.006, M.poly, -0.035, 0.032); // sights
+      box(0.024, 0.012, 0.032, M.poly, -0.016, -0.113);                                         // magazine base
+      guard(0.04, -0.03, 0.02);
+      muzzle = 0.145; boreY = 0.015;
+      g.userData.pos = [0.12, -0.12, -0.34];
+    } else if (model === 'revolver') {
+      prof([[-0.035, 0.0], [0.065, 0.0], [0.065, 0.042], [-0.015, 0.048], [-0.04, 0.03]], 0.026, M.steel, 0.003);
+      tubeF(0.023, 0.023, 0.005, 0.055, 0.022, M.steel, 6);                                      // fluted-look cylinder
+      tubeF(0.009, 0.009, 0.065, 0.215, 0.03, M.steel);
+      box(0.016, 0.016, 0.15, M.steel, 0.14, 0.014);                                             // underlug
+      box(0.004, 0.012, 0.008, M.steel, 0.205, 0.043);
+      prof([[-0.038, 0.002], [0.002, 0.002], [-0.004, -0.1], [-0.045, -0.11], [-0.055, -0.06]], 0.032, M.walnut, 0.005);
+      box(0.008, 0.02, 0.012, M.steel, -0.035, 0.05).rotation.x = 0.5;                           // hammer
+      guard(0.03, -0.012, 0.02);
+      muzzle = 0.215; boreY = 0.03;
+      g.userData.pos = [0.12, -0.12, -0.34];
+    } else if (model === 'ar') {
+      tubeF(0.016, 0.016, -0.3, -0.04, 0.02, M.poly);                                            // buffer tube
+      prof([[-0.36, -0.06], [-0.36, 0.045], [-0.2, 0.045], [-0.17, 0.02], [-0.17, -0.005], [-0.24, -0.025]], 0.04, M.poly, 0.005);
+      prof([[-0.05, 0.0], [0.17, 0.0], [0.17, 0.045], [-0.05, 0.045]], 0.036, M.park, 0.003);    // upper receiver
+      prof([[-0.04, -0.035], [0.14, -0.035], [0.14, 0.0], [-0.04, 0.0]], 0.034, M.park, 0.003);  // lower receiver
+      prof([[0.04, -0.035], [0.098, -0.035], [0.108, -0.1], [0.125, -0.16], [0.07, -0.175], [0.055, -0.11]], 0.026, M.park, 0.003); // curved magazine
+      prof([[-0.035, -0.03], [-0.005, -0.03], [-0.03, -0.12], [-0.06, -0.12]], 0.03, M.poly, 0.005); // pistol grip
+      guard(0.01, -0.035, 0.02);
+      tubeF(0.024, 0.024, 0.17, 0.42, 0.02, M.poly, 8);                                         // handguard
+      for (let i = 0; i < 14; i++) box(0.022, 0.006, 0.006, M.park, -0.04 + i * 0.033, 0.05);     // top rail
+      tubeF(0.009, 0.0085, 0.42, 0.52, 0.02, M.park); tubeF(0.012, 0.012, 0.52, 0.57, 0.02, M.park); // barrel, flash hider
+      box(0.012, 0.035, 0.01, M.park, 0.5, 0.045);                                               // front sight post
+      scope(-0.06, 0.2, 0.085, 0.015, 0.02, 0.019, 0.05);
+      muzzle = 0.57; boreY = 0.02;
+    } else if (model === 'fifty') {
+      prof([[-0.42, -0.08], [-0.42, 0.06], [-0.3, 0.06], [-0.28, 0.02], [-0.14, 0.01], [-0.14, -0.03], [-0.3, -0.03], [-0.34, -0.08]], 0.045, M.park, 0.005);
+      prof([[-0.14, -0.04], [0.38, -0.04], [0.38, 0.06], [-0.14, 0.06]], 0.06, M.tan, 0.004);    // big receiver
+      prof([[-0.12, -0.04], [-0.085, -0.04], [-0.11, -0.13], [-0.145, -0.13]], 0.032, M.poly, 0.005);
+      prof([[0.0, -0.04], [0.12, -0.04], [0.12, -0.13], [0.0, -0.13]], 0.05, M.park, 0.003);     // magazine
+      guard(-0.07, -0.045, 0.02);
+      tubeF(0.024, 0.02, 0.38, 1.25, 0.02, M.park);
+      prof([[1.25, -0.02], [1.37, -0.02], [1.37, 0.06], [1.25, 0.06]], 0.06, M.park, 0.004);      // muzzle brake
+      for (const f of [1.28, 1.31, 1.34]) for (const s of [-1, 1]) box(0.012, 0.05, 0.012, M.rubber, f, 0.02, s * 0.03);
+      for (const s of [-1, 1]) { const leg = box(0.014, 0.34, 0.014, M.park, 0.55, -0.13, s * 0.06); leg.rotation.z = s * 0.35; leg.rotation.x = -0.45; }
+      for (let i = 0; i < 16; i++) box(0.03, 0.006, 0.008, M.park, -0.1 + i * 0.03, 0.065);
+      scope(-0.12, 0.3, 0.12, 0.017, 0.03, 0.022, 0.07);
+      muzzle = 1.37; boreY = 0.02;
+      g.userData.pos = [0.22, -0.25, -0.66];
     } else {
-      box(0.055, 0.075, model === 'fifty' ? 0.4 : 0.55, wood, 0, -0.02, 0.06);
-      box(0.05, 0.13, 0.2, wood, 0, -0.06, 0.27).rotation.x = 0.2;
-      box(0.045, 0.05, 0.22, model === 'fifty' ? black : blued, 0, 0.03, 0.02);
+      // classic wooden-stocked long guns share one stock shape
+      const sporter = [[-0.40, -0.115], [-0.40, 0.02], [-0.36, 0.03], [-0.14, 0.035], [-0.08, 0.02], [-0.03, 0.012], [0.42, 0.012], [0.45, 0.0], [0.44, -0.022], [0.3, -0.03],
+        [0.1, -0.035], [0.02, -0.04], [-0.02, -0.06], [-0.035, -0.105], [-0.075, -0.105], [-0.085, -0.07], [-0.12, -0.05], [-0.2, -0.06]];
+      const straight = [[-0.40, -0.1], [-0.40, 0.022], [-0.36, 0.03], [-0.07, 0.012], [-0.05, 0.012], [-0.05, -0.03], [-0.1, -0.04]];
+      const wood = model === 'magnum' ? M.olive : model === 'bolt' || model === 'garand' ? M.walnut : M.birch;
+      const L = { rimfire: 0.5, shotgun: 0.68, lever: 0.5, bolt: 0.6, garand: 0.58, magnum: 0.72 }[model];
+      if (model === 'lever') {
+        prof(straight, 0.042, wood, 0.006);
+        prof([[-0.05, -0.035], [0.12, -0.035], [0.12, 0.035], [-0.05, 0.035]], 0.034, M.blued, 0.003);  // receiver
+        prof([[0.14, -0.028], [0.4, -0.022], [0.42, -0.005], [0.4, 0.012], [0.14, 0.012]], 0.038, wood, 0.006);
+        const lv = at(new THREE.TorusGeometry(0.035, 0.0045, 6, 18, Math.PI * 1.2), M.blued, 0.0, -0.06); lv.rotation.set(0, Math.PI / 2, Math.PI * 0.9);
+        tubeF(0.008, 0.008, 0.12, 0.5, -0.006, M.blued);                                          // tube magazine
+        for (const f of [0.4, 0.5]) ring(0.016, 0.004, M.blued, f, 0.01);                         // barrel bands
+        box(0.01, 0.012, 0.012, M.brass, 0.09, 0.0, -0.018);                                      // loading gate
+        tubeF(0.0115, 0.009, 0.12, 0.12 + L, 0.022, M.blued); boreY = 0.022; muzzle = 0.12 + L;
+        scope(-0.03, 0.22, 0.062, 0.0127, 0.018, 0.018, 0.035);
+      } else if (model === 'shotgun') {
+        prof(sporter.map(([f, y]) => [f, y]), 0.044, wood, 0.006);
+        prof([[-0.04, -0.035], [0.18, -0.035], [0.18, 0.04], [-0.04, 0.042]], 0.04, M.blued, 0.004); // receiver
+        tubeF(0.013, 0.012, 0.18, 0.18 + L, 0.024, M.blued); boreY = 0.024; muzzle = 0.18 + L;
+        box(0.006, 0.004, L, M.blued, 0.18 + L / 2, 0.039);                                       // vent rib
+        at(new THREE.SphereGeometry(0.0035, 10, 8), M.bead, 0.18 + L - 0.01, 0.043);              // bead sight
+        tubeF(0.011, 0.011, 0.18, 0.62, -0.004, M.blued);                                         // magazine tube
+        tubeF(0.022, 0.022, 0.24, 0.44, -0.004, M.walnut, 24);                                    // pump forend
+        for (let i = 0; i < 6; i++) ring(0.0222, 0.0018, M.rubber, 0.27 + i * 0.03, -0.004);
+        box(0.008, 0.012, 0.04, M.brass, 0.06, -0.03, 0.0);
+      } else if (model === 'garand') {
+        prof([[-0.4, -0.11], [-0.4, 0.022], [-0.36, 0.03], [-0.1, 0.018], [-0.05, 0.012], [0.46, 0.012], [0.48, -0.005], [0.46, -0.03], [0.1, -0.035], [0.02, -0.04], [-0.04, -0.07], [-0.1, -0.06], [-0.2, -0.065]], 0.046, wood, 0.006);
+        prof([[0.14, 0.03], [0.44, 0.03], [0.44, 0.05], [0.14, 0.05]], 0.032, wood, 0.006);       // upper handguard
+        prof([[-0.06, -0.02], [0.14, -0.02], [0.14, 0.045], [-0.06, 0.045]], 0.032, M.park, 0.003);
+        box(0.012, 0.022, 0.012, M.park, -0.05, 0.055);                                           // rear peep sight
+        tubeF(0.012, 0.009, 0.14, 0.14 + L, 0.028, M.park); boreY = 0.028; muzzle = 0.14 + L;
+        tubeF(0.008, 0.008, 0.5, 0.14 + L - 0.02, 0.008, M.park);                                 // gas cylinder
+        box(0.006, 0.016, 0.006, M.park, 0.14 + L - 0.01, 0.045);
+        swivel(-0.3, -0.08); swivel(0.42, -0.04);
+        scope(0.02, 0.25, 0.072, 0.0127, 0.017, 0.017, 0.045);
+      } else {
+        // bolt-action family: bolt, magnum, rimfire
+        const k = model === 'rimfire' ? 0.85 : 1;
+        prof(sporter.map(([f, y]) => [f, y * k]), model === 'rimfire' ? 0.036 : 0.044, wood, 0.006);
+        box(0.046, 0.14 * k, 0.012, M.rubber, -0.405, -0.045 * k);                               // recoil pad
+        tubeF(0.017 * k, 0.017 * k, -0.02, 0.2, 0.025, M.blued);                                  // receiver
+        tubeF(0.0115 * k, 0.0085 * k, 0.2, 0.2 + L, 0.025, M.blued); muzzle = 0.2 + L;
+        if (model === 'magnum') { tubeF(0.014, 0.014, 0.2 + L, 0.26 + L, 0.025, M.blued); for (const f of [0.215, 0.235]) box(0.03, 0.004, 0.008, M.rubber, f + L, 0.025); muzzle = 0.26 + L; }
+        box(0.03 * k, 0.012, 0.07, M.blued, 0.1, -0.04 * k);                                     // floorplate
+        guard(0.03, -0.037 * k);
+        swivel(-0.3, -0.085 * k); swivel(0.38, -0.034);
+        const bolt = new THREE.Group(); g.add(bolt); bolt.position.set(0, 0.025, 0.01);
+        const arm = mesh(new THREE.CylinderGeometry(0.0045, 0.0045, 0.05, 8), M.steel, -0.03, -0.006, 0, bolt); arm.rotation.z = Math.PI / 2 - 0.4;
+        mesh(new THREE.SphereGeometry(0.011, 12, 10), M.steel, -0.054, -0.016, 0, bolt);
+        g.userData.bolt = bolt;
+        const big = model === 'magnum';
+        scope(-0.04, 0.3, 0.07, big ? 0.015 : 0.0127, big ? 0.026 : model === 'rimfire' ? 0.016 : 0.021, big ? 0.021 : 0.018, 0.04);
+      }
+      guard(0.03, -0.037);
     }
-    tube(R, R * 1.15, L, blued, 0, 0.035, -0.12 - L / 2);
-    if (model === 'shotgun') { tube(0.012, 0.012, L * 0.75, blued, 0, 0.0, -0.1 - L * 0.375); tube(0.022, 0.022, 0.16, wood, 0, 0.0, -0.3); }
-    if (model === 'lever') { tube(0.008, 0.008, L * 0.8, blued, 0, 0.012, -0.1 - L * 0.4); const lv = mesh(new THREE.TorusGeometry(0.035, 0.006, 6, 16, Math.PI), blued, 0, -0.06, 0.1, g); lv.rotation.y = Math.PI / 2; lv.rotation.z = Math.PI; }
-    if (model === 'garand') { box(0.05, 0.05, 0.4, wood, 0, 0.0, -0.3); box(0.006, 0.018, 0.006, blued, 0, 0.06, -0.12 - L); }
-    if (model === 'rimfire') box(0.02, 0.05, 0.05, black, 0, -0.04, -0.05);
-    if (model === 'magnum' || model === 'fifty' || model === 'bolt') box(0.025, 0.05, 0.07, black, 0, -0.04, -0.05);
-    if (model === 'fifty') {
-      tube(0.035, 0.035, 0.09, black, 0, 0.035, -0.12 - L);                                         // muzzle brake
-      for (const sd of [-1, 1]) { const leg = box(0.012, 0.3, 0.012, black, sd * 0.05, -0.12, -0.55); leg.rotation.z = sd * 0.35; leg.rotation.x = 0.4; }
-    }
-    if (model === 'bolt' || model === 'magnum' || model === 'fifty') {
-      g.userData.bolt = mesh(new THREE.SphereGeometry(0.014, 10, 8), blued, -0.05, 0.03, 0.08, g);
-      mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.05, 6), blued, -0.03, 0.03, 0.08, g).rotation.z = Math.PI / 2;
-    }
-    const sc = { rimfire: [0.016, 0.26, 0.085], lever: [0.017, 0.24, 0.09], bolt: [0.02, 0.3, 0.1], ar: [0.018, 0.22, 0.11], garand: [0.017, 0.22, 0.095], magnum: [0.024, 0.36, 0.11], fifty: [0.028, 0.4, 0.13] }[model];
-    if (sc) scope(sc[0], sc[1], sc[2], model === 'ar' ? -0.02 : 0);
-    if (model === 'shotgun') box(0.006, 0.006, 0.006, steel, 0, 0.05, -0.12 - L);
-    g.userData.pos = model === 'fifty' ? [0.2, -0.24, -0.62] : [0.2, -0.21, -0.5];
+    // muzzle flash: two crossed flame cards and a flame cone, hidden until a shot
+    const fl = new THREE.Group(); fl.position.set(0, boreY, -muzzle - 0.005); fl.visible = false; g.add(fl);
+    const card = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), flashMat); fl.add(card);
+    const flameGeo = new THREE.PlaneGeometry(1.6, 0.7); flameGeo.rotateY(-Math.PI / 2); flameGeo.translate(0, 0, -0.8);
+    fl.add(new THREE.Mesh(flameGeo, flashSideMat), new THREE.Mesh(flameGeo.clone().rotateZ(Math.PI / 2), flashSideMat));
+    g.userData.flash = fl; g.userData.muzzle = new V(0, boreY, -muzzle);
+    if (!g.userData.pos) g.userData.pos = [0.2, -0.21, -0.5];
     return g;
   }
+  const flashTex = canvasTex(128, 128, (g, w) => {
+    const c = w / 2, r = g.createRadialGradient(c, c, 0, c, c, c);
+    r.addColorStop(0, 'rgba(255,255,235,1)'); r.addColorStop(0.18, 'rgba(255,220,120,.95)'); r.addColorStop(0.45, 'rgba(255,140,40,.55)'); r.addColorStop(1, 'rgba(255,90,20,0)');
+    g.fillStyle = r; g.fillRect(0, 0, w, w);
+    g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(255,200,110,.9)';
+    for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2 + rand(-0.15, 0.15), l = rand(0.6, 0.95) * c; g.lineWidth = rand(2, 5); g.beginPath(); g.moveTo(c, c); g.lineTo(c + Math.cos(a) * l, c + Math.sin(a) * l); g.stroke(); }
+  });
+  const flameTex = canvasTex(256, 64, (g, w, h) => {
+    const r = g.createLinearGradient(0, 0, w, 0);
+    r.addColorStop(0, 'rgba(255,90,20,0)'); r.addColorStop(0.35, 'rgba(255,150,50,.85)'); r.addColorStop(0.8, 'rgba(255,240,190,1)'); r.addColorStop(1, 'rgba(255,255,240,1)');
+    g.fillStyle = r; g.beginPath(); g.moveTo(w, h / 2); g.quadraticCurveTo(w * 0.4, -h * 0.1, 0, h / 2); g.quadraticCurveTo(w * 0.4, h * 1.1, w, h / 2); g.fill();
+  });
+  const flashMat = new THREE.MeshBasicMaterial({ map: flashTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  const flashSideMat = new THREE.MeshBasicMaterial({ map: flameTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
   const flash = new THREE.PointLight(0xffc06a, 0, 6); flash.position.set(0.16, -0.12, -1.1); camera.add(flash);
 
   // ---------- targets ----------
@@ -468,36 +629,148 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     return t;
   });
 
-  // animal silhouettes, facing +x, origin at the feet (metres)
-  const SHAPES = {
-    deer: { color: 0x7a4b2a, vital: [0.36, 0.84, 0.14], pts: [[-0.62,0.62],[-0.6,0.02],[-0.52,0.02],[-0.48,0.55],[-0.4,0.55],[-0.38,0.02],[-0.3,0.02],[-0.3,0.6],[0.3,0.6],[0.32,0.02],[0.4,0.02],[0.42,0.55],[0.48,0.55],[0.5,0.02],[0.58,0.02],[0.6,0.7],[0.66,0.95],[0.8,1.25],[0.98,1.3],[1.0,1.38],[0.86,1.48],[0.9,1.62],[0.8,1.52],[0.74,1.62],[0.7,1.46],[0.55,1.12],[0.4,1.05],[-0.55,1.02],[-0.66,1.08],[-0.7,0.98],[-0.66,0.9]] },
-    boar: { color: 0x4a3a30, vital: [0.28, 0.5, 0.11], pts: [[-0.55,0.35],[-0.52,0.02],[-0.44,0.02],[-0.4,0.3],[-0.3,0.3],[-0.28,0.02],[-0.2,0.02],[-0.18,0.28],[0.25,0.28],[0.27,0.02],[0.35,0.02],[0.37,0.28],[0.42,0.28],[0.44,0.02],[0.52,0.02],[0.55,0.35],[0.7,0.4],[0.82,0.4],[0.82,0.52],[0.68,0.62],[0.62,0.8],[0.55,0.68],[0.45,0.8],[0.1,0.84],[-0.3,0.76],[-0.52,0.66],[-0.62,0.64],[-0.58,0.5]] },
-    rabbit: { color: 0x8a755c, vital: [0.02, 0.15, 0.06], pts: [[-0.2,0.0],[0.12,0.0],[0.16,0.06],[0.13,0.12],[0.17,0.2],[0.22,0.23],[0.26,0.27],[0.21,0.33],[0.16,0.34],[0.14,0.52],[0.09,0.5],[0.1,0.35],[0.05,0.3],[-0.1,0.27],[-0.21,0.19],[-0.25,0.1],[-0.24,0.03]] },
-  };
-  const animalGeo = {};
-  for (const k in SHAPES) {
-    const sh = new THREE.Shape(SHAPES[k].pts.map(([x, y]) => new THREE.Vector2(x, y)));
-    const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.05, bevelEnabled: false }); geo.translate(0, 0, -0.025);
-    animalGeo[k] = geo;
+  // ---------- wildlife: 3D deer, boar and rabbits, facing +x, origin at the feet (metres) ----------
+  const furTex = (base, dark) => canvasTex(128, 128, (g, w, h) => {
+    g.fillStyle = base; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 1800; i++) { g.fillStyle = Math.random() < 0.5 ? dark : 'rgba(255,255,255,.08)'; g.globalAlpha = rand(0.1, 0.35); g.fillRect(rand(0, w), rand(0, h), 1, rand(2, 5)); }
+    g.globalAlpha = 1;
+  });
+  const FUR = {};
+  function furMats() {
+    if (FUR.deer) return FUR;
+    const m = (base, dark, rough = 1) => std(0xffffff, { map: furTex(base, dark), roughness: rough });
+    Object.assign(FUR, {
+      deer: m('#8a5a33', 'rgba(60,30,10,.6)'), deerBack: m('#6a4224', 'rgba(40,20,5,.6)'), deerBelly: m('#dcc8a6', 'rgba(120,90,60,.4)'), white: m('#efeae0', 'rgba(150,140,120,.3)'),
+      boar: m('#3b2d25', 'rgba(10,5,0,.7)'), boarDark: m('#241a15', 'rgba(0,0,0,.7)'), snout: std(0x6b4a44, { roughness: 0.7 }),
+      rabbit: m('#8b7660', 'rgba(50,35,20,.6)'), rabbitBelly: m('#d8ccb8', 'rgba(120,100,80,.3)'),
+      hoof: std(0x1c1612, { roughness: 0.6 }), eye: std(0x050505, { roughness: 0.15, metalness: 0.3 }), nose: std(0x141010, { roughness: 0.35 }),
+      antler: std(0xcbb58f, { roughness: 0.75 }), tusk: std(0xeee6d0, { roughness: 0.4 }),
+    });
+    return FUR;
   }
-  const vitalMat = new THREE.MeshBasicMaterial({ color: 0xf4efe2, transparent: true, opacity: 0.55 });
-  function spawnAnimal(kind, d, x, moving) {
-    const S = SHAPES[kind];
-    const root = new THREE.Group(); root.position.set(x, 0, -d); scene.add(root);
-    root.rotation.y = Math.atan2(-x, d);
-    const pivot = new THREE.Group(); root.add(pivot); pivot.rotation.x = -Math.PI / 2; pivot.scale.setScalar(1.25);
-    const flip = new THREE.Group(); pivot.add(flip);
-    const dir = Math.random() < 0.5 ? 1 : -1; flip.scale.x = dir;
-    const body = mesh(animalGeo[kind], std(S.color, { roughness: 0.9 }), 0, 0, 0, flip);
-    for (const z of [0.026, -0.026]) {
-      const ring = new THREE.Mesh(new THREE.RingGeometry(S.vital[2] * 0.82, S.vital[2], 28), vitalMat);
-      ring.position.set(S.vital[0], S.vital[1], z); if (z < 0) ring.rotation.y = Math.PI; flip.add(ring);
+  function buildAnimal(kind) {
+    const F = furMats(), g = new THREE.Group(), parts = [], legs = [];
+    const add = (geo, m, x, y, z = 0, parent = g) => { const o = mesh(geo, m, x, y, z, parent); parts.push(o); return o; };
+    const capsule = (r, len, m, x, y, z, rotZ = 0, parent = g) => { const o = add(new THREE.CapsuleGeometry(r, len, 5, 12), m, x, y, z, parent); o.rotation.z = rotZ; return o; };
+    const ball = (r, m, x, y, z, sx = 1, sy = 1, sz = 1, parent = g) => { const o = add(new THREE.SphereGeometry(r, 18, 14), m, x, y, z, parent); o.scale.set(sx, sy, sz); return o; };
+    const leg = (x, z, hipY, upR, upL, loR, loL, coat, front, kneeBase) => {
+      loL = Math.max(0.02, hipY - upL - upR * 0.6 - loR * 2.0);   // lower leg long enough that the hoof meets the ground
+      const hip = new THREE.Group(); hip.position.set(x, hipY, z); g.add(hip);
+      capsule(upR, upL, coat, 0, -upL / 2 - upR * 0.3, 0, 0, hip);
+      const knee = new THREE.Group(); knee.position.y = -upL - upR * 0.6; hip.add(knee);
+      capsule(loR, loL, coat, 0, -loL / 2, 0, 0, knee);
+      add(new THREE.CylinderGeometry(loR * 0.9, loR * 1.25, loR * 2.4, 8), F.hoof, 0, -loL - loR * 0.8, 0, knee);
+      legs.push({ hip, knee, front, kneeBase, ph: (front ? 0 : Math.PI) + (z > 0 ? Math.PI * 0.5 : 0) });
+      knee.rotation.z = kneeBase;
+    };
+    let neck = null, vital, tailWag = null;
+    if (kind === 'deer') {
+      const buck = Math.random() < 0.5;
+      capsule(0.2, 0.62, F.deer, 0, 0.98, 0, Math.PI / 2).scale.set(1.05, 1, 0.82);
+      ball(0.24, F.deer, 0.33, 1.0, 0, 1, 1.12, 0.84);                                    // chest
+      ball(0.23, F.deer, -0.36, 1.0, 0, 1, 1.05, 0.86);                                   // haunch
+      capsule(0.15, 0.5, F.deerBelly, 0.0, 0.86, 0, Math.PI / 2).scale.set(1, 1, 0.7);    // pale belly
+      capsule(0.12, 0.62, F.deerBack, -0.02, 1.13, 0, Math.PI / 2).scale.set(1, 0.6, 0.75); // darker back
+      ball(0.12, F.white, -0.55, 1.02, 0, 0.35, 1, 0.9);                                  // rump patch
+      tailWag = ball(0.07, F.deer, -0.6, 1.12, 0, 0.45, 1.3, 0.7);
+      neck = new THREE.Group(); neck.position.set(0.42, 1.12, 0); g.add(neck);
+      capsule(0.09, 0.3, F.deer, 0.09, 0.18, 0, -0.45, neck);
+      ball(0.06, F.white, 0.2, 0.22, 0, 0.6, 1.1, 0.9, neck);                             // throat patch
+      const head = new THREE.Group(); head.position.set(0.2, 0.42, 0); neck.add(head);
+      capsule(0.075, 0.1, F.deer, 0.05, -0.03, 0, -2.0, head);          // skull, angled nose-down
+      capsule(0.042, 0.1, F.deer, 0.14, -0.09, 0, -2.1, head);          // muzzle
+      ball(0.026, F.nose, 0.2, -0.125, 0, 1, 1, 1, head);
+      for (const s of [-1, 1]) {
+        ball(0.013, F.eye, 0.08, 0.01, s * 0.058, 1, 1, 1, head);
+        const ear = add(new THREE.ConeGeometry(0.04, 0.15, 10), F.deer, -0.01, 0.1, s * 0.07, head); ear.rotation.set(s * 0.7, 0, -0.35); ear.scale.z = 0.4;
+        if (buck) {                                                                          // antlers: curved main beam with tines
+          const pts = [[0, 0.06, 0.04], [-0.04, 0.2, 0.12], [0.06, 0.32, 0.17], [0.2, 0.33, 0.1]].map(([x, y, z]) => new V(x, y, z * s));
+          const beam = new THREE.CatmullRomCurve3(pts);
+          add(new THREE.TubeGeometry(beam, 16, 0.012, 6), F.antler, 0, 0, 0, head);
+          for (const u of [0.45, 0.65, 0.85]) { const p = beam.getPoint(u); const tine = add(new THREE.ConeGeometry(0.009, 0.12, 6), F.antler, p.x, p.y + 0.055, p.z, head); tine.rotation.z = -0.15; }
+        }
+      }
+      for (const s of [-1, 1]) {
+        leg(0.32, s * 0.1, 0.9, 0.065, 0.24, 0.028, 0, F.deer, true, 0);
+        leg(-0.36, s * 0.1, 0.95, 0.09, 0.26, 0.028, 0, F.deer, false, 0.25);
+      }
+      vital = [0.3, 0.95, 0.17];
+    } else if (kind === 'boar') {
+      capsule(0.24, 0.5, F.boar, -0.02, 0.56, 0, Math.PI / 2).scale.set(1.08, 1, 0.84);
+      ball(0.27, F.boar, 0.24, 0.62, 0, 1, 1.08, 0.86);                                   // shoulder hump
+      ball(0.22, F.boar, -0.3, 0.56, 0, 1, 1, 0.84);
+      ball(0.12, F.boarDark, 0.2, 0.84, 0, 1.9, 0.45, 0.5);               // bristly mane over the shoulders
+      neck = new THREE.Group(); neck.position.set(0.42, 0.58, 0); g.add(neck);
+      const skull = add(new THREE.ConeGeometry(0.16, 0.42, 14), F.boar, 0.16, -0.04, 0, neck); skull.rotation.z = -Math.PI / 2 - 0.25; skull.scale.z = 0.85;
+      const disc = add(new THREE.CylinderGeometry(0.05, 0.05, 0.035, 14), F.snout, 0.37, -0.1, 0, neck); disc.rotation.z = Math.PI / 2 - 0.25;
+      for (const s of [-1, 1]) {
+        const tusk = add(new THREE.ConeGeometry(0.012, 0.07, 6), F.tusk, 0.3, -0.1, s * 0.05, neck); tusk.rotation.z = -0.5;
+        const ear = add(new THREE.ConeGeometry(0.045, 0.1, 8), F.boarDark, 0.02, 0.12, s * 0.08, neck); ear.rotation.set(s * 0.5, 0, 0.3); ear.scale.z = 0.45;
+        ball(0.012, F.eye, 0.14, 0.04, s * 0.075, 1, 1, 1, neck);
+      }
+      tailWag = add(new THREE.CylinderGeometry(0.01, 0.006, 0.16, 6), F.boarDark, -0.55, 0.6, 0); tailWag.rotation.z = 0.6;
+      for (const s of [-1, 1]) {
+        leg(0.26, s * 0.1, 0.44, 0.06, 0.14, 0.03, 0.2, F.boarDark, true, 0);
+        leg(-0.32, s * 0.1, 0.46, 0.075, 0.14, 0.03, 0.2, F.boarDark, false, 0.2);
+      }
+      vital = [0.22, 0.56, 0.13];
+    } else {
+      ball(0.13, F.rabbit, 0, 0.16, 0, 1.35, 1, 0.9);
+      ball(0.1, F.rabbitBelly, 0.04, 0.12, 0, 1.2, 0.8, 0.8);
+      for (const s of [-1, 1]) ball(0.1, F.rabbit, -0.1, 0.12, s * 0.06, 1.2, 1, 0.7);    // haunches
+      neck = new THREE.Group(); neck.position.set(0.14, 0.24, 0); g.add(neck);
+      ball(0.07, F.rabbit, 0.03, 0.02, 0, 1.25, 1, 0.9, neck);
+      ball(0.014, F.nose, 0.115, 0.0, 0, 1, 1, 1, neck);
+      for (const s of [-1, 1]) {
+        ball(0.012, F.eye, 0.05, 0.04, s * 0.05, 1, 1, 1, neck);
+        const ear = capsule(0.02, 0.13, F.rabbit, -0.02, 0.14, s * 0.025, 0.35, neck); ear.scale.z = 0.45;
+        leg(0.1, s * 0.04, 0.1, 0.02, 0.05, 0.015, 0.06, F.rabbit, true, 0);
+      }
+      tailWag = ball(0.04, F.white, -0.19, 0.19, 0);
+      vital = [0.05, 0.16, 0.07];
     }
-    const t = { type: 'animal', kind, d, root, pivot, flip, body, dir, moving, speed: moving ? (kind === 'deer' ? 3.2 : kind === 'boar' ? 2.2 : 2.6) : 0,
-                state: 'rise', t: 0, life: rand(5.5, 8), S };
-    body.userData = { target: t, kind: 'animal' };
-    hittables.push(body); targets.push(t);
+    return { g, parts, legs, neck, vital, tailWag };
+  }
+  const GAIT = { deer: { walk: 1.3, run: 4.2, stride: 4.5 }, boar: { walk: 1.0, run: 3.0, stride: 6.5 }, rabbit: { walk: 0.8, run: 3.6, stride: 9 } };
+  const edgeX = d => 14 + d * 0.42;                       // clearing edge (tree line) at a given distance
+  function spawnAnimal(kind, d, x, moving, opts = {}) {
+    const root = new THREE.Group(); root.position.set(x, 0, -d); scene.add(root);
+    root.rotation.y = Math.atan2(-x, d);                    // broadside to the shooter
+    const pivot = new THREE.Group(); root.add(pivot);
+    const flip = new THREE.Group(); pivot.add(flip);
+    const A = buildAnimal(kind); flip.add(A.g);
+    const dir = opts.dir || (x > 0 ? -1 : 1); flip.scale.x = dir;
+    const t = { type: 'animal', kind, d, root, pivot, flip, dir, moving, parts: A.parts, legs: A.legs, neck: A.neck, tailWag: A.tailWag, vital: A.vital,
+                state: opts.state || (moving ? 'cross' : 'walkin'), t: 0, phase: rand(0, 6), speedNow: 0,
+                stopX: opts.stopX ?? rand(-edgeX(d) * 0.55, edgeX(d) * 0.55), life: opts.life || rand(6, 9) * (level ? levelSpec(level).lifeMul : 1), grazeT: 0 };
+    for (const m of A.parts) m.userData = { target: t, kind: 'animal' };
+    hittables.push(...A.parts); targets.push(t);
     return t;
+  }
+  function animateAnimal(t, dt) {
+    const ga = GAIT[t.kind];
+    let want = 0;
+    if (t.state === 'walkin') want = ga.walk;
+    else if (t.state === 'cross') want = ga.run * (level ? levelSpec(level).speedMul : 1);
+    else if (t.state === 'leave') want = ga.walk * 1.6;
+    t.speedNow = lerp(t.speedNow, want, 1 - Math.exp(-dt * 3));
+    const right = new V(1, 0, 0).applyQuaternion(t.root.quaternion);
+    t.root.position.addScaledVector(right, t.speedNow * t.dir * dt);
+    t.phase += t.speedNow * ga.stride * dt;
+    const amp = Math.min(0.55, t.speedNow * 0.22);
+    for (const L of t.legs) {
+      const s = Math.sin(t.phase + L.ph);
+      L.hip.rotation.z = s * amp * (L.front ? 1 : 0.9);
+      L.knee.rotation.z = L.kneeBase + (L.front ? -1 : 1) * Math.max(0, -s) * amp * 1.4;
+    }
+    if (t.kind === 'rabbit') t.pivot.position.y = t.speedNow > 0.2 ? Math.max(0, Math.sin(t.phase * 0.5)) * 0.06 * t.speedNow : 0;
+    else t.pivot.position.y = Math.abs(Math.sin(t.phase)) * 0.012 * t.speedNow;
+    // grazing: head goes down to feed and comes back up to look around
+    const grazing = t.state === 'graze';
+    if (grazing) t.grazeT += dt;
+    const headDown = grazing && Math.sin(t.grazeT * 0.9) > -0.2;
+    if (t.neck) t.neck.rotation.z = lerp(t.neck.rotation.z, headDown ? (t.kind === 'rabbit' ? -0.5 : -1.15) : 0, 1 - Math.exp(-dt * 2.5));
+    if (t.tailWag) t.tailWag.rotation.x = Math.sin(t.phase * 2 + t.grazeT * 6) * 0.3;
   }
   function spawnGong(d, x) {
     const root = new THREE.Group(); root.position.set(x, 0, -d); scene.add(root);
@@ -524,6 +797,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     camera.remove(rifle); rifle = buildGun(gun.model); rifle.traverse(o => { o.castShadow = false; });
     const p = rifle.userData.pos; rifle.position.set(p[0], p[1], p[2]); rifle.userData.home = p[2]; rifle.scale.setScalar(0.85);
     camera.add(rifle);
+    flash.position.copy(rifle.userData.muzzle).multiplyScalar(0.85).add(rifle.position);
     ammo = gun.mag; reloadT = 0; cycleT = 0;
     $('gunName').textContent = gun.name;
     buildZoomButtons(); setZoom(1);
@@ -649,7 +923,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
       b.sprite.position.copy(b.p); scene.add(b.sprite);
       bullets.push(b);
     }
-    recoil = gun.recoil; flash.intensity = 3; rifle.position.z = rifle.userData.home + 0.07;
+    recoil = gun.recoil; flash.intensity = 4 * gun.boom; rifle.position.z = rifle.userData.home + 0.07;
+    // fire from the muzzle: flame cards sized by the gun, then a drifting smoke puff
+    const fl = rifle.userData.flash, sz = 0.07 + gun.boom * 0.11 + (gun.pellets ? 0.05 : 0);
+    fl.visible = true; fl.scale.set(sz * rand(0.85, 1.2), sz * rand(0.85, 1.2), sz * rand(0.9, 1.4)); fl.rotation.z = rand(0, Math.PI * 2);
+    flashT = 0.055; scopeFlash = scoped() ? 1 : 0;
+    const mz = rifle.visible ? rifle.localToWorld(rifle.userData.muzzle.clone()) : camera.position.clone().addScaledVector(fwd, 1.2).addScaledVector(up, -0.15);
+    for (let k = 0; k < 3; k++) smoke(mz.clone().addScaledVector(fwd, 0.1 + k * 0.15), fwd, 0.08 + gun.boom * 0.1);
     tone('shot');
     if (ammo === 0) setTimeout(reload, 650);
     hud();
@@ -689,6 +969,12 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
       const dist = b.p.distanceTo(camera.position); b.sprite.scale.setScalar(0.04 + dist * 0.0035);
       if (done) { scene.remove(b.sprite); bullets.splice(i, 1); if (++b.shot.done === b.shot.n && b.shot.n > 1) pelletSummary(b.shot); }
     }
+  }
+  let flashT = 0, scopeFlash = 0;
+  function smoke(p, fwd, size) {
+    const s = new THREE.Sprite(dustMat.clone()); s.material.color.set(0xd9d6cf); s.material.opacity = 0.5;
+    s.position.copy(p); s.scale.setScalar(size); scene.add(s);
+    fxSprites.push({ s, t: 0, size, life: 1.8, grow: 2.2, alpha: 0.45, v: fwd.clone().multiplyScalar(rand(0.6, 1.4)).add(new V(wind * 0.4, rand(0.25, 0.5), 0)) });
   }
   function puff(p, color, size) {
     const s = new THREE.Sprite(dustMat.clone()); s.material.color.set(color);
@@ -732,17 +1018,19 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
       coach('good', 'Steel hit', `Ring! That plate is ${Math.round(t.d)} m away. Notice the sound arrives after the hit.`);
     } else if (kind === 'animal') {
       const local = t.flip.worldToLocal(p.clone());
-      const [vx, vy, vr] = t.S.vital, vital = Math.hypot(local.x - vx, local.y - vy) < vr;
+      const [vx, vy, vr] = t.vital, vital = Math.hypot(local.x - vx, local.y - vy) < vr;
+      const running = t.speedNow > 2;
       const mult = t.d <= 100 ? 1 : t.d <= 200 ? 2 : 3;
-      const pts = Math.ceil((vital ? 25 : 10) * mult * (t.moving ? 1.5 : 1) * share);
+      const pts = Math.ceil((vital ? 25 : 10) * mult * (running ? 1.5 : 1) * share);
       stats.points += pts;
       t.state = 'fall'; t.t = 0;
-      const i = hittables.indexOf(t.body); if (i >= 0) hittables.splice(i, 1);
+      for (const m of t.parts) { const i = hittables.indexOf(m); if (i >= 0) hittables.splice(i, 1); }
       setTimeout(() => tone('thud'), delay);
-      popup(p, (vital ? 'VITAL +' : 'HIT +') + pts, vital ? 'var(--good)' : 'var(--blaze)');
-      coach('good', vital ? 'Clean vital hit' : 'Body hit', vital
-        ? `Right in the ring at ${Math.round(t.d)} m.${t.moving ? ' Great lead on a moving target.' : ''}`
-        : 'Aim for the pale ring behind the front leg. That zone scores 25 instead of 10.');
+      popup(p, (vital ? 'CLEAN SHOT +' : 'HIT +') + pts, vital ? 'var(--good)' : 'var(--blaze)');
+      coach('good', vital ? 'Clean shot' : 'Hit', vital
+        ? `Right through the heart and lungs at ${Math.round(t.d)} m.${running ? ' Great lead on a running animal.' : ''}`
+        : 'Down, but aim just behind the front leg, a third of the way up the body, for a clean shot worth 25.');
+      onKill();
     }
     hud();
   }
@@ -776,14 +1064,30 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     coach(ring >= 8 ? 'good' : 'bad', head, `${ring ? 'Landed' : 'It passed'} ${parts.join(' and ')}. Next shot, ${fixes.join(' and ')}${dots ? ` (1 dot = 1 mil = ${d / 10} cm at ${d} m)` : ''}.`);
   }
 
-  // ---------- hunt mode ----------
+  // ---------- hunt mode: levels ----------
+  let level = 0, kills = 0, bestLevel = 1;
+  try { bestLevel = +localStorage.getItem('forest-best-level') || 1; } catch (e) {}
+  function levelSpec(L) {
+    return {
+      goal: Math.min(3 + 2 * (L - 1), 21),                  // animals to take down
+      time: Math.min(60 + 10 * (L - 1), 120),               // seconds on the clock
+      minD: Math.min(30 + 5 * (L - 1), 80),
+      maxD: Math.min(110 + 30 * (L - 1), 280),
+      moving: Math.min(0.15 + 0.1 * (L - 1), 0.75),        // share of animals running across
+      speedMul: 1 + 0.08 * (L - 1),
+      lifeMul: Math.max(0.5, 1 - 0.07 * (L - 1)),           // how long they stay in the open
+      maxLive: Math.min(2 + Math.ceil(L / 2), 6),
+      wind: L >= 3,
+    };
+  }
   function spawnHuntTarget() {
-    const live = targets.filter(t => t.type !== 'paper' && t.state !== 'fall' && t.state !== 'hide').length;
-    if (live >= 4) return;
-    const d = rand(35, 260), w = 10 + d * 0.38, x = rand(-w, w);
+    const S = levelSpec(level);
+    const live = targets.filter(t => t.type === 'animal' && t.state !== 'fall').length;
+    if (live >= S.maxLive) return;
+    const d = rand(S.minD, S.maxD), side = Math.random() < 0.5 ? -1 : 1, x = side * (edgeX(d) + 2);
+    if (Math.random() < 0.08 && !targets.some(t => t.type === 'gong')) { spawnGong(d, rand(-edgeX(d) * 0.6, edgeX(d) * 0.6)); return; }
     const r = Math.random();
-    if (r < 0.2) spawnGong(d, x);
-    else spawnAnimal(r < 0.5 ? 'deer' : r < 0.78 ? 'boar' : 'rabbit', d, x, Math.random() < 0.45);
+    spawnAnimal(r < 0.5 ? 'deer' : r < 0.8 ? 'boar' : 'rabbit', d, x, Math.random() < S.moving, { dir: -side });
   }
   function updateTargets(dt) {
     for (const t of [...targets]) {
@@ -794,47 +1098,103 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
       }
       if (t.type !== 'animal') continue;
       t.t += dt;
-      if (t.state === 'rise') { t.pivot.rotation.x = lerp(-Math.PI / 2, 0, clamp(t.t / 0.45, 0, 1)); if (t.t > 0.45) { t.state = 'up'; t.t = 0; } }
-      else if (t.state === 'up') {
-        if (t.moving) {
-          const right = new V(1, 0, 0).applyQuaternion(t.root.quaternion);
-          t.root.position.addScaledVector(right, t.speed * t.dir * dt);
-          const w = 12 + t.d * 0.42;
-          if (Math.abs(t.root.position.x) > w) { t.dir *= -1; t.flip.scale.x = t.dir; }
-          if (t.kind === 'rabbit') t.pivot.position.y = Math.abs(Math.sin(t.t * 7)) * 0.18;
-        }
-        if (t.t > t.life) { t.state = 'hide'; t.t = 0; const i = hittables.indexOf(t.body); if (i >= 0) hittables.splice(i, 1); }
-      } else if (t.state === 'fall') { t.pivot.rotation.x = lerp(0, -Math.PI / 2, clamp(t.t / 0.35, 0, 1)); if (t.t > 1.2) removeTarget(t); }
-      else if (t.state === 'hide') { t.pivot.rotation.x = lerp(0, -Math.PI / 2, clamp(t.t / 0.5, 0, 1)); if (t.t > 0.6) removeTarget(t); }
+      const x = t.root.position.x, w = edgeX(t.d);
+      if (t.state === 'walkin' && (t.dir > 0 ? x >= t.stopX : x <= t.stopX)) { t.state = 'graze'; t.t = 0; }
+      else if (t.state === 'graze' && t.t > t.life) { t.state = 'leave'; t.dir = x > 0 ? 1 : -1; t.flip.scale.x = t.dir; }
+      else if ((t.state === 'cross' || t.state === 'leave') && Math.abs(x) > w + 3 && Math.sign(x) === t.dir) { removeTarget(t); continue; }
+      if (t.state === 'fall') {
+        const k = clamp(t.t / 0.55, 0, 1);
+        t.pivot.rotation.x = -Math.PI / 2 * 0.94 * k * k;      // tips over onto its side
+        t.pivot.position.y = 0;
+        if (t.t > 3) t.pivot.position.y = -(t.t - 3) * 0.6;   // then sinks away
+        if (t.t > 4.2) removeTarget(t);
+        continue;
+      }
+      animateAnimal(t, dt);
     }
   }
   function clearHunt() { for (const t of [...targets]) if (t.type !== 'paper') removeTarget(t); }
-  function startHunt() {
-    mode = 'hunt'; clock = 90; spawnT = 0.5; resetStats(); clearHunt();
-    windOn = true; newWind(); paper.forEach(p => p.root.visible = false);
+  function enterHuntScene() {
+    clearHunt(); paper.forEach(p => p.root.visible = false);
     for (const p of paper) for (const m of [p.face, p.board]) { const i = hittables.indexOf(m); if (i >= 0) hittables.splice(i, 1); }
     yaw = 0; pitch = 0.01;
-    $('overlay').hidden = true; $('clockCell').hidden = false; $('lanes').hidden = true; $('cardWrap').hidden = true;
+    $('lanes').hidden = true; $('cardWrap').hidden = true; $('clockCell').hidden = false; $('levelCell').hidden = false; $('killCell').hidden = false;
     $('modeBtn').textContent = 'Practice range';
-    coach('', '90-second hunt', 'Animals and steel plates pop up around the clearing. Pale ring = vital zone. Moving targets score 1.5×.');
+  }
+  function showCard({ eyebrow, title, big, text, list = [], primary, secondary = ['Practice range', startPractice] }) {
+    $('ovEyebrow').textContent = eyebrow || ''; $('ovTitle').textContent = title; $('ovBig').textContent = big || ''; $('ovBig').hidden = !big;
+    $('ovText').textContent = text || '';
+    $('ovList').innerHTML = list.map(li => `<li>${li}</li>`).join(''); $('ovList').hidden = !list.length;
+    $('ovPrimary').textContent = primary[0]; $('ovPrimary').onclick = primary[1];
+    $('ovSecondary').textContent = secondary[0]; $('ovSecondary').onclick = secondary[1];
+    $('overlay').hidden = false;
+  }
+  function briefing(L) {
+    level = L; mode = 'hunt'; enterHuntScene();
+    const S = levelSpec(L);
+    kills = 0; clock = S.time; hud();
+    showCard({
+      eyebrow: `Level ${L}${L > 1 ? '' : ' · Your first hunt'}`,
+      title: `Take down ${S.goal} animals`, big: `${S.time} s`,
+      text: `Get ${S.goal} animals before the clock runs out to unlock level ${L + 1}.`,
+      list: [
+        `Animals step out of the trees ${S.minD}–${S.maxD} m away`,
+        `${Math.round(S.moving * 100)}% of them run across the clearing (aim ahead of them)`,
+        S.wind ? 'Wind is on: hold into it on long shots' : 'Calm air for this level',
+        `You have the ${gun.name}. ${gun.zero >= 100 ? 'Good choice for the far ones.' : 'Consider a scoped rifle for long shots.'}`,
+        `Clean shots just behind the front leg score more. Best level so far: ${bestLevel}`,
+      ],
+      primary: ['Start level ' + L, startLevel],
+      secondary: ['Choose gun', openLocker],
+    });
+  }
+  function startLevel() {
+    const S = levelSpec(level);
+    resetStats(); kills = 0; clock = S.time; spawnT = 0.3;
+    windOn = S.wind; newWind();
+    $('overlay').hidden = true;
+    coach('', `Level ${level}: ${S.goal} animals`, 'Use the orange markers to find animals, then scope in. Grazing animals are easiest; runners need a lead.');
     hud();
   }
+  function onKill() {
+    kills++; hud();
+    if (mode === 'hunt' && kills >= levelSpec(level).goal) levelComplete();
+  }
+  function levelComplete() {
+    const S = levelSpec(level), next = levelSpec(level + 1);
+    bestLevel = Math.max(bestLevel, level + 1);
+    try { localStorage.setItem('forest-best-level', bestLevel); } catch (e) {}
+    const acc = stats.shots ? Math.round(stats.hits / stats.shots * 100) : 0;
+    tone('steel');
+    showCard({
+      eyebrow: `Level ${level} cleared`, title: 'Nice shooting!', big: `${stats.points} pts`,
+      text: `${kills} of ${S.goal} animals with ${Math.ceil(clock)} s to spare · ${acc}% accuracy.`,
+      list: [`Next up, level ${level + 1}: take down ${next.goal} animals in ${next.time} seconds`, `They can be up to ${next.maxD} m away and ${Math.round(next.moving * 100)}% will be running`],
+      primary: [`Continue to level ${level + 1}`, () => briefing(level + 1)],
+      secondary: ['Practice range', startPractice],
+    });
+  }
+  function levelFailed() {
+    const S = levelSpec(level);
+    showCard({
+      eyebrow: `Level ${level}`, title: "Time's up", big: `${kills} / ${S.goal}`,
+      text: `You needed ${S.goal - kills} more. ${stats.shots ? `You hit ${stats.hits} of ${stats.shots} shots.` : ''}`,
+      list: ['Tip: wait for an animal to stop and graze, then take your time', 'Check the range under the cross and hold over for far animals'],
+      primary: ['Try again', () => briefing(level)],
+      secondary: ['Practice range', startPractice],
+    });
+  }
+  function startHunt() { briefing(Math.max(1, level || 1)); }
   function startPractice() {
-    mode = 'practice'; resetStats(); clearHunt();
+    mode = 'practice'; level = 0; resetStats(); clearHunt();
     paper.forEach(p => { p.root.visible = true; for (const m of [p.face, p.board]) if (!hittables.includes(m)) hittables.push(m); });
-    $('overlay').hidden = true; $('clockCell').hidden = true; $('lanes').hidden = false; $('cardWrap').hidden = false;
+    $('overlay').hidden = true; $('clockCell').hidden = true; $('levelCell').hidden = true; $('killCell').hidden = true;
+    $('lanes').hidden = false; $('cardWrap').hidden = false;
     $('modeBtn').textContent = 'Start hunt';
     setLane(lane); hud();
   }
-  function finishHunt() {
-    const acc = stats.shots ? Math.round(stats.hits / stats.shots * 100) : 0;
-    $('ovScore').textContent = stats.points;
-    $('ovText').textContent = `${stats.hits} hits from ${stats.shots} shots (${acc}% accuracy)`;
-    $('overlay').hidden = false; clearHunt();
-  }
   function resetStats() { stats = { points: 0, hits: 0, shots: 0 }; ammo = gun.mag; reloadT = 0; }
   function newWind() { wind = windOn ? Math.round(rand(1, 6)) * (Math.random() < 0.5 ? -1 : 1) : 0; hud(); }
-
   function buildLocker() {
     const maxV = 620, maxMag = 30;
     $('guns').innerHTML = '';
@@ -857,8 +1217,6 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
   $('gunBtn').addEventListener('click', openLocker);
   $('lockerClose').addEventListener('click', () => { $('locker').hidden = true; });
   $('modeBtn').addEventListener('click', () => mode === 'practice' ? startHunt() : startPractice());
-  $('againBtn').addEventListener('click', startHunt);
-  $('practiceBtn').addEventListener('click', startPractice);
   $('windBtn').addEventListener('click', () => {
     windOn = !windOn; newWind();
     if (windOn) coach('', 'Wind on', `A ${Math.abs(wind)} m/s wind is blowing ${wind > 0 ? 'left to right' : 'right to left'}. It pushes the bullet more the further it flies, so hold into the wind.`);
@@ -872,6 +1230,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     $('ammo').textContent = reloadT > 0 ? 'Reload' : ammo + '/' + gun.mag;
     $('wind').textContent = wind ? Math.abs(wind) + ' m/s ' + (wind > 0 ? '→' : '←') : 'Calm';
     $('windBtn').innerHTML = 'Wind: <b>' + (windOn ? 'On' : 'Off') + '</b>';
+    if (level) { $('levelNum').textContent = level; $('killNum').textContent = kills + '/' + levelSpec(level).goal; $('clock').textContent = Math.ceil(clock); }
     $('soundBtn').innerHTML = 'Sound: <b>' + (sound ? 'On' : 'Off') + '</b>';
   }
   function coach(kind, tag, text) { $('coach').className = 'coach ' + kind; $('coachTag').textContent = tag; $('coachText').textContent = text; }
@@ -946,6 +1305,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
         if (m % 2 === 0) fctx.fillText(m, cx + 6, cy + o + 4);
       }
       fctx.fillStyle = '#ff3b2f'; fctx.beginPath(); fctx.arc(cx, cy, 1.6, 0, 7); fctx.fill();
+      if (scopeFlash > 0) {        // muzzle blast glowing through the scope
+        const fg = fctx.createRadialGradient(cx, cy + R * 0.5, R * 0.1, cx, cy + R * 0.3, R * 1.1);
+        fg.addColorStop(0, `rgba(255,230,160,${0.85 * scopeFlash})`); fg.addColorStop(0.5, `rgba(255,140,40,${0.45 * scopeFlash})`); fg.addColorStop(1, 'rgba(255,100,20,0)');
+        fctx.fillStyle = fg; fctx.beginPath(); fctx.arc(cx, cy, R, 0, 7); fctx.fill();
+      }
       // breath meter and readouts
       fctx.font = '600 14px "Barlow Condensed", sans-serif'; fctx.textAlign = 'center'; fctx.fillStyle = '#f1ede4';
       const ty = cy + R * 0.6;
@@ -999,20 +1363,24 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
     if (cycleT > 0) { cycleT -= dt; if (rifle.userData.bolt) rifle.userData.bolt.position.z = 0.08 + Math.max(0, Math.sin((gun.cycle - cycleT) / gun.cycle * Math.PI)) * 0.06; }
     if (reloadT > 0) { reloadT -= dt; rifle.rotation.z = Math.sin(Math.min(1, (gun.reload - reloadT) / gun.reload) * Math.PI) * 0.5; if (reloadT <= 0) { reloadT = 0; ammo = gun.mag; rifle.rotation.z = 0; hud(); } }
     rifle.position.z = lerp(rifle.position.z, rifle.userData.home, 1 - Math.exp(-dt * 10));
-    flash.intensity = Math.max(0, flash.intensity - dt * 30);
+    flash.intensity = Math.max(0, flash.intensity - dt * 40);
+    if (flashT > 0) { flashT -= dt; if (flashT <= 0) rifle.userData.flash.visible = false; }
+    scopeFlash = Math.max(0, scopeFlash - dt * 9);
 
     stepBullets(dt);
     updateTargets(dt);
     for (let i = fxSprites.length - 1; i >= 0; i--) {
       const f = fxSprites[i]; f.t += dt;
-      f.s.scale.setScalar(f.size * (1 + f.t * 2)); f.s.material.opacity = Math.max(0, 1 - f.t / 0.9);
-      if (f.t > 0.9) { scene.remove(f.s); fxSprites.splice(i, 1); }
+      const life = f.life || 0.9;
+      if (f.v) { f.s.position.addScaledVector(f.v, dt); f.v.multiplyScalar(Math.exp(-dt * 1.5)); }
+      f.s.scale.setScalar(f.size * (1 + f.t * (f.grow || 2))); f.s.material.opacity = Math.max(0, (f.alpha || 1) * (1 - f.t / life));
+      if (f.t > life) { scene.remove(f.s); fxSprites.splice(i, 1); }
     }
 
-    if (mode === 'hunt' && $('overlay').hidden) {
+    if (mode === 'hunt' && $('overlay').hidden && $('locker').hidden) {
       clock -= dt; spawnT -= dt;
       if (spawnT <= 0) { spawnHuntTarget(); spawnT = rand(1.6, 3.2); }
-      if (clock <= 0) { clock = 0; finishHunt(); }
+      if (clock <= 0) { clock = 0; levelFailed(); }
       $('clock').textContent = Math.ceil(clock);
     }
     if ((rangeTick -= dt) <= 0) { measureRange(); rangeTick = 0.1; }
@@ -1075,7 +1443,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--blaze); outline
       for (let i = 0; i < 400 && bullets.length; i++) stepBullets(1 / 60);
       cycleT = 0; return $('coachTag').textContent + ' | ' + $('coachText').textContent;
     },
-    fire, setLane, setZoom, equipGun, GUNS, get gun() { return gun; }, startHunt, paper, targets, spawnAnimal, spawnGong, laneX, EYE, holdBreath(v) { holding = v; } };
+    fire, setLane, setZoom, equipGun, briefing, startLevel, levelSpec, get kills() { return kills; }, get level() { return level; }, GUNS, get gun() { return gun; }, startHunt, paper, targets, spawnAnimal, spawnGong, laneX, EYE, holdBreath(v) { holding = v; } };
   requestAnimationFrame(frame);
 })();
 </script>
