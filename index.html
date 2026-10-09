@@ -1,40 +1,106 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="./script.js" defer></script>
-   
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Game Room</title>
+<meta name="description" content="A calculator and browser games in one place.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500&display=swap">
+<style>
+/* Layout: a short header, then a responsive grid of cards, one per app. Same arena palette as Hoop Shot. */
+:root {
+  --bg: #070c26;
+  --card: #10173a;
+  --line: #24305c;
+  --chalk: #f1ede4;
+  --muted: #9aa6c8;
+  --led: #ffb43d;
+  --ball: #e8742c;
+  --display: "Anton", "Impact", "Arial Narrow", sans-serif;
+  --label: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "Barlow", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { min-height: 100%; }
+body {
+  margin: 0; min-height: 100%; color: var(--chalk); font-family: var(--body); font-size: 17px; line-height: 1.5;
+  background: radial-gradient(1100px 520px at 50% -120px, #1b2f8a 0%, rgba(27,47,138,0) 70%), var(--bg);
+  padding: 0 16px;
+}
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 56px 64px; display: grid; gap: 40px; }
+
+header { display: grid; gap: 10px; }
+.eyebrow { font-family: var(--label); font-weight: 700; font-size: 14px; letter-spacing: .18em; text-transform: uppercase; color: var(--led); }
+h1 { font-family: var(--display); font-weight: 400; font-size: clamp(48px, 9vw, 88px); line-height: .95; margin: 0; letter-spacing: .01em; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); max-width: 52ch; font-size: 19px; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+.card {
+  display: grid; grid-template-rows: auto 1fr; background: var(--card); border: 1px solid var(--line);
+  border-radius: 10px; overflow: hidden; color: inherit; text-decoration: none; min-width: 0;
+  transition: transform .18s ease, border-color .18s ease;
+}
+a.card:hover { transform: translateY(-3px); border-color: var(--ball); }
+a.card:focus-visible { outline: 3px solid var(--led); outline-offset: 3px; }
+.shot { aspect-ratio: 16 / 10; max-width: 100%; background: #0b1130; display: block; overflow: hidden; }
+.shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.info { padding: 16px 18px 18px; display: grid; gap: 6px; align-content: start; }
+.tag { font-family: var(--label); font-weight: 700; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.card h2 { font-family: var(--display); font-weight: 400; font-size: 30px; line-height: 1.05; margin: 0; letter-spacing: .01em; }
+.card p { margin: 0; color: var(--muted); }
+.go { font-family: var(--label); font-weight: 700; font-size: 15px; letter-spacing: .1em; text-transform: uppercase; color: var(--led); margin-top: 6px; }
+
+.card.soon { border-style: dashed; background: transparent; }
+.card.soon .shot { display: grid; place-items: center; background: repeating-linear-gradient(135deg, rgba(36,48,92,.35) 0 12px, transparent 12px 24px); }
+.card.soon .shot span { font-family: var(--display); font-size: 64px; color: var(--line); }
+
+footer { color: var(--muted); font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { a.card { transition: none; } a.card:hover { transform: none; } }
+</style>
 </head>
 <body>
-    <div class="cal-grid">
-        <div class="output">
-            <div data-previous-operand class="prev"></div>
-            <div data-current-operand class="curr"></div>
-        </div>
-        <button data-all-clear class="span-two">AC</button>
-        <button data-delete>DEL</button>
-        <button data-operation>/</button>
-        <button data-number>1</button>
-        <button data-number>2</button>
-        <button data-number>3</button>
-        <button data-operation>*</button>
-        <button data-number>4</button>
-        <button data-number>5</button>
-        <button data-number>6</button>
-        <button data-operation>+</button>
-        <button data-number>7</button>
-        <button data-number>8</button>
-        <button data-number>9</button>
-        <button data-operation>-</button>
-        <button data-number>.</button>
-        <button data-number>0</button>
-        <button data-square>x^2</button>
-        <button data-equals>=</button>
-    </div>
-</body>
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Play and calculate</span>
+    <h1>Game Room</h1>
+    <p class="lede">A handy calculator and a growing shelf of browser games. Pick one to start. Nothing to install.</p>
+  </header>
 
+  <main class="grid">
+    <a class="card" href="basketball/">
+      <span class="shot"><img src="assets/hoop-shot.jpg" alt="Hoop Shot: a player in a white number 23 jersey lining up a shot in a blue-lit arena" width="640" height="400"></span>
+      <span class="info">
+        <span class="tag">3D game · Basketball</span>
+        <h2>Hoop Shot 3D</h2>
+        <p>Pull back and release to shoot. Learn the arc with an aim guide, coach tips after every miss, and five camera views.</p>
+        <span class="go">Play &rarr;</span>
+      </span>
+    </a>
+
+    <a class="card" href="calculator/">
+      <span class="shot"><img src="assets/calculator.jpg" alt="Calculator keypad with digits, operators, square and equals keys" width="640" height="400"></span>
+      <span class="info">
+        <span class="tag">Tool</span>
+        <h2>Calculator</h2>
+        <p>Add, subtract, multiply, divide and square numbers, with the previous step shown above the result.</p>
+        <span class="go">Open &rarr;</span>
+      </span>
+    </a>
+
+    <div class="card soon" aria-label="Next game, coming soon">
+      <span class="shot"><span>?</span></span>
+      <span class="info">
+        <span class="tag">Coming soon</span>
+        <h2>Next game</h2>
+        <p>Another game is on the way. Check back soon.</p>
+      </span>
+    </div>
+  </main>
+
+  <footer>Works on phones and desktops. Hoop Shot needs an internet connection to load its 3D engine.</footer>
+</div>
+</body>
 </html>

@@ -62,3 +62,17 @@ body{
     background-color: black;
     color: white;
 }
+.home-link{
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    font-size: 1rem;
+    color: white;
+    background-color: rgba(0, 0, 0, 0.75);
+    padding: 8px 14px;
+    border-radius: 4px;
+    text-decoration: none;
+}
+.home-link:hover{
+    background-color: black;
+}

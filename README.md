@@ -1,5 +1,11 @@
 ## Calculator-app
-the app consist of three files: the index.html, style.css and the script.js
+The home page (`index.html`) is the Game Room: it links to the calculator and the games.
+
+- `calculator/` holds the calculator: index.html, style.css and script.js
+- `basketball/` holds Hoop Shot 3D
+
+## Calculator (calculator/)
+The calculator consists of three files: index.html, style.css and script.js
 
 
 ### script.js
