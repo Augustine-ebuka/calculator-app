@@ -64,6 +64,17 @@ h2.title { font-family: var(--display); font-style: italic; font-weight: 800; fo
 .cards { display: grid; gap: 10px; }
 .tcard { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: center; text-align: left; padding: 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); }
 .tcard[aria-pressed="true"] { border-color: var(--red); background: rgba(255, 59, 47, .1); }
+.input { width: 100%; background: rgba(255,255,255,.06); border: 1px solid var(--line); border-radius: 6px; padding: 11px 12px; color: var(--ink); font: 600 16px var(--ui); }
+.input:focus { outline: 2px solid var(--red); outline-offset: 1px; }
+.live { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.live i { width: 8px; height: 8px; border-radius: 50%; background: #3ddc84; box-shadow: 0 0 8px #3ddc84; }
+.live.off i { background: #666; box-shadow: none; }
+.pcard { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); text-align: left; }
+.pcard b { font-family: var(--display); font-size: 17px; font-weight: 700; }
+.pcard span { font-size: 12px; color: var(--muted); }
+.pcard .tag { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
+.pcard .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; vertical-align: -1px; }
+.empty { color: var(--muted); font-size: 14px; margin: 0; }
 .tcard canvas { width: 96px; height: 72px; border-radius: 4px; background: rgba(0,0,0,.35); }
 .tcard b { font-family: var(--display); font-size: 19px; font-weight: 700; display: block; }
 .tcard span { font-size: 13px; color: var(--muted); line-height: 1.4; display: block; }
@@ -147,12 +158,19 @@ h2.title { font-family: var(--display); font-style: italic; font-weight: 800; fo
 /* touch controls */
 #touch { position: fixed; inset: auto 0 0 0; z-index: 7; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); pointer-events: none; }
 #touch .grp { display: flex; gap: 12px; align-items: flex-end; pointer-events: auto; }
+#touch .grp:last-child { margin-left: auto; }
 .tb { width: 82px; height: 82px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); background: rgba(0,0,0,.35); font-family: var(--display); font-weight: 800; font-size: 15px; letter-spacing: .05em; display: grid; place-items: center; touch-action: none; backdrop-filter: blur(3px); }
 .tb.sm { width: 64px; height: 64px; font-size: 12px; }
 .tb.down { background: rgba(255,255,255,.35); }
 .tb.gas { border-color: rgba(120,255,140,.7); }
 .tb.nos { border-color: var(--cyan); color: var(--cyan); }
 .tb svg { width: 34px; height: 34px; }
+#knob { position: fixed; z-index: 8; pointer-events: none; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 2px solid rgba(255,255,255,.45); background: rgba(0,0,0,.18); }
+#knob i { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(255,255,255,.75); box-shadow: 0 0 14px rgba(255,255,255,.5); }
+#steerMeter { position: fixed; z-index: 7; left: 50%; transform: translateX(-50%); bottom: max(16px, env(safe-area-inset-bottom)); width: 170px; height: 34px; border-radius: 17px; background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.25); pointer-events: auto; touch-action: none; }
+#steerMeter::before { content: ""; position: absolute; left: 50%; top: 6px; bottom: 6px; width: 2px; background: rgba(255,255,255,.35); }
+#steerMeter i { position: absolute; top: 5px; left: 50%; width: 24px; height: 24px; margin-left: -12px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+#steerMeter span { position: absolute; left: 0; right: 0; top: -18px; text-align: center; font: 600 11px var(--ui); color: rgba(255,255,255,.8); text-shadow: 0 1px 3px #000; }
 body.touch .br { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 96px); }
 @media (max-height: 520px) { body.touch .rpm { display: none; } body.touch .speed { font-size: 40px; } body.touch .meter { width: 150px; } body.touch .br { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 84px); } body.touch #mini { width: 96px; height: 96px; } }
 body.touch .board { display: none; }
@@ -205,8 +223,10 @@ body.touch .board { display: none; }
   <div class="center" id="keys" hidden><span class="gasKey"><b>Accelerate</b> hold <kbd>↑</kbd> or <kbd>W</kbd></span><span><b>Steer</b> <kbd>←</kbd><kbd>→</kbd> or <kbd>A</kbd><kbd>D</kbd></span><span><b>Brake</b> <kbd>↓</kbd> or <kbd>S</kbd></span><span><b>Drift</b> <kbd>Space</kbd> while turning</span><span><b>Nitro</b> <kbd>Shift</kbd></span></div>
 </div>
 
+<div id="knob" hidden><i></i></div>
+<div id="steerMeter" hidden><span id="steerHint">Tap to centre</span><i></i></div>
 <div id="touch" hidden>
-  <div class="grp">
+  <div class="grp" id="steerBtns">
     <button class="tb" data-k="left" aria-label="Steer left"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 4 6 12l9 8z"/></svg></button>
     <button class="tb" data-k="right" aria-label="Steer right"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m9 4 9 8-9 8z"/></svg></button>
   </div>
@@ -226,11 +246,13 @@ body.touch .board { display: none; }
     <p class="tagline">Street racing at 300 km/h. Drift through the corners to charge a boost, hit the nitro on the straights and beat five rivals to the flag.</p>
     <div class="stack">
       <button class="btn primary" id="bQuick">Quick race <small>Pick a track, 6 cars</small></button>
+      <button class="btn" id="bOnline">Race online <small id="onlineSub">Race your friends live</small></button>
       <button class="btn" id="bChamp">Championship <small id="champSub">3 rounds, points</small></button>
       <button class="btn" id="bTrial">Time trial <small>Race your ghost</small></button>
       <button class="btn" id="bGarage">Garage <small id="garageSub">5 cars</small></button>
     </div>
     <div class="setting"><span>Rivals</span><div class="row" id="diffRow"><button class="chip" data-d="0">Easy</button><button class="chip" data-d="1">Pro</button><button class="chip" data-d="2">Legend</button></div></div>
+    <div class="setting steerSet"><span>Phone steering</span><div class="row"><button class="chip" data-steer="buttons">Buttons</button><button class="chip" data-steer="tilt">Tilt</button><button class="chip" data-steer="drag">Drag</button><button class="chip" data-inv>Invert tilt</button></div></div>
     <div class="setting"><span>Options</span><div class="row"><button class="chip" id="soundChip">Sound</button><button class="chip" id="autoChip">Auto-gas</button><button class="chip" id="qualChip">High detail</button></div></div>
     <p class="foot"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> or <kbd>WASD</kbd> drive · <kbd>Space</kbd> drift · <kbd>Shift</kbd> nitro · <kbd>C</kbd> camera · <kbd>R</kbd> reset · <kbd>P</kbd> pause. Gamepads work too.</p>
   </div>
@@ -269,11 +291,37 @@ body.touch .board { display: none; }
       <button class="btn" id="pRestart">Restart race</button>
       <button class="btn" id="pQuit">Quit to menu</button>
     </div>
+    <div class="setting steerSet"><span>Phone steering</span><div class="row"><button class="chip" data-steer="buttons">Buttons</button><button class="chip" data-steer="tilt">Tilt</button><button class="chip" data-steer="drag">Drag</button><button class="chip" data-inv>Invert tilt</button></div></div>
     <div class="setting"><span>Options</span><div class="row"><button class="chip" id="soundChip2">Sound</button><button class="chip" id="autoChip2">Auto-gas</button></div></div>
   </div>
 </div>
 
 <!-- results -->
+<div class="screen" id="sOnline" hidden>
+  <div class="panel">
+    <div class="row" style="justify-content:space-between"><button class="chip" data-back>← Back</button><span class="live" id="liveCount"><i></i><span>Connecting…</span></span></div>
+    <div><div class="eyebrow">Online</div><h2 class="title">Race your friends</h2></div>
+    <p class="tagline" id="onlineNote" style="margin:0">Everyone who has Apex Rush open right now shows up here. Host a race and your friends can join it, or send them your race code.</p>
+    <label class="setting"><span>Your driver name</span><input class="input" id="nick" maxlength="16" autocomplete="off" spellcheck="false"></label>
+    <button class="btn primary" id="bHost">Host a race <small>You pick the track</small></button>
+    <div class="setting"><span>Open races</span><div class="cards" id="openRaces"></div></div>
+    <div class="setting"><span>Join with a code</span><div class="row" style="flex-wrap:nowrap"><input class="input" id="codeIn" maxlength="6" placeholder="e.g. k7p2" autocomplete="off" spellcheck="false"><button class="btn" id="bJoinCode" style="flex:none">Join</button></div></div>
+    <div class="setting"><span>Drivers online</span><div class="cards" id="people"></div></div>
+  </div>
+</div>
+
+<div class="screen" id="sRoom" hidden>
+  <div class="panel">
+    <div class="row" style="justify-content:space-between"><button class="chip" id="bLeave">← Leave race</button><span class="live" id="roomLive"><i></i><span>Race lobby</span></span></div>
+    <div><div class="eyebrow">Race code <span id="roomCode" style="color:var(--ink);letter-spacing:.1em"></span></div><h2 class="title" id="roomTrack">Coastline GP</h2></div>
+    <p class="tagline" id="roomNote" style="margin:0"></p>
+    <div class="setting" id="hostOpts"><span>Track</span><div class="row" id="roomTracks"></div><span>Laps</span><div class="row" id="roomLaps"></div></div>
+    <div class="setting"><span id="roomCount">Drivers</span><div class="cards" id="roomPeople"></div></div>
+    <button class="btn primary" id="bStartOnline">Start race</button>
+    <p class="foot">Up to 8 drivers. Everyone races their own car from the Garage. No AI rivals online.</p>
+  </div>
+</div>
+
 <div class="screen" id="sResults" hidden>
   <div class="panel">
     <div class="eyebrow" id="rMode">Race result</div>
@@ -304,7 +352,7 @@ body.touch .board { display: none; }
   // ---------- save data ----------
   function load(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
   function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-  const store = Object.assign({ coins: 800, owned: ['volt', 'raptor'], car: 'volt', paint: {}, best: {}, diff: 1, sound: true, autoGas: isTouch, hq: !isTouch, laps: 3, track: 0, champ: null }, load('apex-save', {}));
+  const store = Object.assign({ coins: 800, owned: ['volt', 'raptor'], car: 'volt', paint: {}, best: {}, diff: 1, sound: true, autoGas: isTouch, hq: !isTouch, steer: 'buttons', invTilt: false, laps: 3, track: 0, champ: null }, load('apex-save', {}));
   const persist = () => save('apex-save', store);
 
   // ---------- cars ----------
@@ -754,13 +802,15 @@ body.touch .board { display: none; }
   function collide() {
     for (let a = 0; a < racers.length; a++) for (let b = a + 1; b < racers.length; b++) {
       const A = racers[a], B = racers[b], dx = B.x - A.x, dz = B.z - A.z, d2 = dx * dx + dz * dz;
-      if (d2 > 17 || d2 < 1e-4) continue;
+      if (d2 > 17 || d2 < 1e-4 || (A.remote && B.remote) || A.left || B.left) continue;
       // cars are roughly 4.6 x 2 m: treat as ellipses squashed along the heading
       const d = Math.sqrt(d2), nx = dx / d, nz = dz / d, along = Math.abs(nx * Math.sin(A.h) + nz * Math.cos(A.h)), minD = lerp(2.1, 4.3, along * along);
       if (d >= minD) continue;
-      const push = (minD - d) / 2; A.x -= nx * push; A.z -= nz * push; B.x += nx * push; B.z += nz * push;
+      // a remote car is solid for us; only the local car moves (its owner handles their side)
+      const wa = A.remote ? 0 : B.remote ? 2 : 1, wb = B.remote ? 0 : A.remote ? 2 : 1;
+      const push = (minD - d) / 2; A.x -= nx * push * wa; A.z -= nz * push * wa; B.x += nx * push * wb; B.z += nz * push * wb;
       const rv = (B.vx - A.vx) * nx + (B.vz - A.vz) * nz;
-      if (rv < 0) { const j = -rv * 0.6; A.vx -= nx * j; A.vz -= nz * j; B.vx += nx * j; B.vz += nz * j; if (A.isPlayer || B.isPlayer) { if (-rv > 3) { burst(300, 0.25, Math.min(0.5, -rv / 30)); shake = Math.max(shake, Math.min(0.6, -rv / 30)); } } }
+      if (rv < 0) { const j = -rv * 0.6; A.vx -= nx * j * wa; A.vz -= nz * j * wa; B.vx += nx * j * wb; B.vz += nz * j * wb; if (A.isPlayer || B.isPlayer) { if (-rv > 3) { burst(300, 0.25, Math.min(0.5, -rv / 30)); shake = Math.max(shake, Math.min(0.6, -rv / 30)); } } }
     }
   }
 
@@ -800,25 +850,71 @@ body.touch .board { display: none; }
   // ---------- input ----------
   const keys = new Set(), touch = {};
   addEventListener('keydown', e => {
+    if (e.target && e.target.tagName === 'INPUT') return;   // typing a name or race code
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
     keys.add(e.code); initAudio();
     if (e.code === 'KeyC' && state === 'race') cycleCam();
-    if ((e.code === 'KeyP' || e.code === 'Escape') && (state === 'race' || state === 'countdown')) pause();
+    if ((e.code === 'KeyP' || e.code === 'Escape') && onlinePauseOpen) resume();
+    else if ((e.code === 'KeyP' || e.code === 'Escape') && (state === 'race' || state === 'countdown')) pause();
     else if ((e.code === 'KeyP' || e.code === 'Escape') && state === 'paused') resume();
     if (e.code === 'KeyR' && state === 'race' && player && !player.finished) respawn(player);
   });
   addEventListener('keyup', e => keys.delete(e.code));
-  addEventListener('blur', () => { keys.clear(); if (state === 'race' || state === 'countdown') pause(); });
-  document.addEventListener('visibilitychange', () => { if (document.hidden && (state === 'race' || state === 'countdown')) pause(); });
+  addEventListener('blur', () => { keys.clear(); if ((state === 'race' || state === 'countdown') && mode !== 'online') pause(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && (state === 'race' || state === 'countdown') && mode !== 'online') pause(); });
   document.querySelectorAll('#touch .tb').forEach(b => {
     const k = b.dataset.k, on = e => { e.preventDefault(); touch[k] = true; b.classList.add('down'); initAudio(); }, off = e => { e.preventDefault(); touch[k] = false; b.classList.remove('down'); };
     b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('pointerleave', off);
   });
+  // ---------- phone steering: tilt and drag ----------
+  const tilt = { raw: null, center: 0, got: false }, drag = { id: null, x0: 0, y0: 0, x: 0 };
+  // landscape phones turn like a wheel around the screen's long axis (beta); portrait uses gamma
+  function tiltAngle(e) {
+    const a = (screen.orientation && typeof screen.orientation.angle === 'number') ? screen.orientation.angle : (window.orientation || 0);
+    return a === 90 ? e.beta : (a === -90 || a === 270) ? -e.beta : a === 180 ? -e.gamma : e.gamma;
+  }
+  addEventListener('deviceorientation', e => { if (e.beta == null || e.gamma == null) return; tilt.raw = tiltAngle(e); if (!tilt.got) { tilt.got = true; tilt.center = tilt.raw; } });
+  function analogSteer() {
+    if (store.steer === 'tilt') { if (tilt.raw == null) return null; let d = tilt.raw - tilt.center; if (d > 180) d -= 360; if (d < -180) d += 360; const v = Math.sign(d) * Math.max(0, Math.abs(d) - 2) / 20; return clamp(store.invTilt ? -v : v, -1, 1); }
+    if (store.steer === 'drag') return drag.id == null ? 0 : clamp((drag.x - drag.x0) / Math.max(60, innerWidth * 0.11), -1, 1);
+    return null;
+  }
+  async function chooseSteer(m) {
+    // iPhones ask permission for motion sensors, and only from a tap
+    if (m === 'tilt' && typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      try { if (await DeviceOrientationEvent.requestPermission() !== 'granted') { steerFallback('Tilt permission was refused'); return; } } catch (e) { steerFallback('Tilt needs permission'); return; }
+    }
+    store.steer = m; persist(); syncSteer();
+    if (m === 'tilt') { tilt.got = false; setTimeout(() => { if (store.steer === 'tilt' && !tilt.got) steerFallback('This browser is not sharing tilt here'); }, 2000); toast('Tilt the phone like a wheel'); }
+    if (m === 'drag') toast('Put a thumb on the left side and slide');
+  }
+  function steerFallback(msg) { store.steer = 'drag'; persist(); syncSteer(); toast(msg + ', using drag'); }
+  function syncSteer() {
+    document.querySelectorAll('.steerSet').forEach(el => el.hidden = !isTouch);
+    document.querySelectorAll('[data-steer]').forEach(b => b.setAttribute('aria-pressed', b.dataset.steer === store.steer));
+    document.querySelectorAll('[data-inv]').forEach(b => { b.setAttribute('aria-pressed', !!store.invTilt); b.hidden = store.steer !== 'tilt'; });
+    $('steerBtns').hidden = store.steer !== 'buttons';
+    $('steerHint').textContent = store.steer === 'tilt' ? 'Tap to centre' : 'Drag on the left';
+  }
+  document.querySelectorAll('[data-steer]').forEach(b => b.onclick = () => chooseSteer(b.dataset.steer));
+  document.querySelectorAll('[data-inv]').forEach(b => b.onclick = () => { store.invTilt = !store.invTilt; persist(); syncSteer(); });
+  $('steerMeter').addEventListener('pointerdown', e => { e.preventDefault(); if (store.steer === 'tilt' && tilt.raw != null) { tilt.center = tilt.raw; toast('Steering centred'); } });
+  canvas.addEventListener('pointerdown', e => {
+    if (!isTouch || store.steer !== 'drag' || drag.id != null || (state !== 'race' && state !== 'countdown')) return;
+    if (e.clientX > innerWidth * 0.62) return;   // the right side is for the pedals
+    drag.id = e.pointerId; drag.x0 = drag.x = e.clientX; drag.y0 = e.clientY;
+    try { canvas.setPointerCapture(e.pointerId); } catch (er) {}
+    const k = $('knob'); k.hidden = false; k.style.left = drag.x0 + 'px'; k.style.top = drag.y0 + 'px'; k.firstChild.style.transform = 'translateX(0px)'; initAudio();
+  });
+  canvas.addEventListener('pointermove', e => { if (e.pointerId !== drag.id) return; drag.x = e.clientX; $('knob').firstChild.style.transform = `translateX(${clamp(drag.x - drag.x0, -60, 60)}px)`; });
+  const dragEnd = e => { if (e.pointerId !== drag.id) return; drag.id = null; $('knob').hidden = true; };
+  canvas.addEventListener('pointerup', dragEnd); canvas.addEventListener('pointercancel', dragEnd);
   function playerInput() {
     const k = c => keys.has(c);
     let steer = (k('ArrowRight') || k('KeyD') || touch.right ? 1 : 0) - (k('ArrowLeft') || k('KeyA') || touch.left ? 1 : 0);
     let gas = k('ArrowUp') || k('KeyW') || touch.gas ? 1 : 0, brake = k('ArrowDown') || k('KeyS') || touch.brake ? 1 : 0;
     let nitro = k('ShiftLeft') || k('ShiftRight') || k('KeyN') || !!touch.nitro, drift = k('Space') || !!touch.drift;
+    if (isTouch && !steer) { const a = analogSteer(); if (a !== null) steer = a; }
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     for (const gp of pads) { if (!gp) continue; const ax = gp.axes[0] || 0; if (Math.abs(ax) > 0.12) steer = ax; const rt = gp.buttons[7], lt = gp.buttons[6]; if (rt && rt.value > 0.05) gas = rt.value; if (lt && lt.value > 0.05) brake = lt.value; if (gp.buttons[0] && gp.buttons[0].pressed) nitro = true; if ((gp.buttons[2] && gp.buttons[2].pressed) || (gp.buttons[5] && gp.buttons[5].pressed)) drift = true; if (gp.buttons[9] && gp.buttons[9].pressed && state === 'race') pause(); break; }
     if (store.autoGas && !brake) gas = Math.max(gas, 1);
@@ -831,13 +927,23 @@ body.touch .board { display: none; }
   let ghostRec = [], ghostBest = null, ghostT = 0, lapForGhost = 0;
   function clearRace() { for (const c of racers) { raceGroup.remove(c.mesh.group); disposeCar(c.mesh.group); } racers.length = 0; player = null; if (ghost) { raceGroup.remove(ghost.group); ghost = null; } smoke.clear(); sparks.clear(); }
   function disposeCar(g) { g.traverse(m => { if (m.material && m.material !== sharedMats.blob && !Object.values(sharedMats).includes(m.material)) m.material.dispose(); }); }
-  function startRace(m, ti) {
-    initAudio(); mode = m; laps = mode === 'trial' ? 3 : store.laps;
+  function startRace(m, ti, net) {
+    initAudio(); mode = m; laps = mode === 'trial' ? 3 : mode === 'online' ? net.laps : store.laps;
     if (!T || T.ti !== ti) buildTrack(ti);
     clearRace(); clearPreview();
     const pdef = carById(store.car);
     player = makeRacer(pdef, store.paint[pdef.id] || pdef.color, 'You', true, 7); racers.push(player);
     if (mode === 'trial') { placeOnGrid(player, 0); setupGhost(); }
+    else if (mode === 'online') {
+      player.name = NET.nick;
+      net.grid.forEach((peer, k) => {
+        if (peer === NET.myPeer) { placeOnGrid(player, k); return; }
+        const pp = racePeer(peer), pr = (pp && pp.presence) || {};
+        const def = carById(String(pr.car || 'raptor')), col = /^#[0-9a-f]{6}$/i.test(pr.paint || '') ? pr.paint : def.color;
+        const c = makeRacer(def, col, cleanNick(pr.nick), false, k + 1); c.remote = peer; c.net = null;
+        placeOnGrid(c, k); racers.push(c);
+      });
+    }
     else {
       const pool = CARS.slice(), rivals = RIVALS.slice().sort(() => Math.random() - 0.5).slice(0, 5);
       const slots = [0, 1, 2, 4, 5]; placeOnGrid(player, 3);
@@ -850,13 +956,14 @@ body.touch .board { display: none; }
       });
     }
     racers.forEach(syncMesh);
-    finishOrder = []; raceTime = 0; racing = false; countT = 0; lightsOn = 0; goAt = 2.2 + 5 * 0.75 + 0.4 + Math.random() * 0.8; resultsT = 0;
+    finishOrder = []; raceTime = 0; racing = false; countT = 0; lightsOn = 0; goAt = 2.2 + 5 * 0.75 + 0.4 + (mode === 'online' ? 0.5 : Math.random() * 0.8); resultsT = 0; resultsShown = false;
     T.startLights.forEach(l => l.material.emissiveIntensity = 0);
     state = 'countdown'; showScreen(null); $('hud').hidden = false; $('touch').hidden = !isTouch; $('gasBtn').hidden = !!store.autoGas;
     $('lights').hidden = false; $('lights').querySelectorAll('i').forEach(i => i.classList.remove('on'));
     $('pTitle').textContent = T.def.name; camMode = camMode || 0; snapCam = true;
     buildRpm();
     idleT = 0; $('keys').hidden = isTouch;
+    syncSteer(); $('steerMeter').hidden = !(isTouch && store.steer !== 'buttons'); if (tilt.raw != null) tilt.center = tilt.raw; drag.id = null; $('knob').hidden = true;
     if (isTouch && innerHeight > innerWidth) setTimeout(() => toast('Turn sideways for a wider view'), 300);
   }
   function setupGhost() {
@@ -884,6 +991,7 @@ body.touch .board { display: none; }
   function finishCar(c) {
     c.finished = true; c.finishTime = raceTime; finishOrder.push(c); c.place = finishOrder.length;
     if (c.isPlayer) {
+      if (mode === 'online') c.place = 1 + racers.filter(o => o.remote && o.finished && o.finishTime < c.finishTime).length;
       bigText(mode === 'trial' ? 'Finish' : c.place === 1 ? 'Winner!' : ordinal(c.place), 2500); beep(660, 0.15); setTimeout(() => beep(990, 0.4), 160);
       c.ai = { skill: 0.8, topK: 0.92, lane: 0, laneT: 0, t: 0, aggr: 0 };   // autopilot cool-down lap
       resultsT = 3.2;
@@ -898,6 +1006,7 @@ body.touch .board { display: none; }
       const n = clamp(Math.floor((countT - 1.0) / 0.75) + 1, 0, 5);
       if (n !== lightsOn) { lightsOn = n; T.startLights.forEach((l, k) => l.material.emissiveIntensity = k < n ? 4 : 0); $('lights').querySelectorAll('i').forEach((el, k) => el.classList.toggle('on', k < n)); if (n) beep(440, 0.2, 'square', 0.18); }
       if (countT >= goAt) { state = 'race'; racing = true; T.startLights.forEach(l => l.material.emissiveIntensity = 0); $('lights').querySelectorAll('i').forEach(el => el.classList.remove('on')); setTimeout(() => $('lights').hidden = true, 600); bigText('GO!', 900); beep(880, 0.5, 'square', 0.22); }
+      if (mode === 'online') { followRemotes(dt); netSend(dt); }
       // revving on the grid
       if (player) { const inp = playerInput(); player.input = { steer: 0, gas: 0, brake: 0, nitro: false, drift: false }; player.rev = inp.gas; }
     }
@@ -907,8 +1016,10 @@ body.touch .board { display: none; }
       if (player && !player.ai) player.input = player.forced || playerInput();
       for (const c of racers) if (c.ai) aiInput(c, dt);
       const steps = 2, h = dt / steps;
-      for (let s = 0; s < steps; s++) { for (const c of racers) physics(c, h); collide(); }
+      for (let s = 0; s < steps; s++) { for (const c of racers) if (!c.remote) physics(c, h); collide(); }
+      if (mode === 'online') { followRemotes(dt); netSend(dt); }
       for (const c of racers) {
+        if (c.remote) continue;
         const lapsDone = Math.floor(c.prog / T.N);
         if (!c.finished && c.prog >= 0) { c.lapsDone = c.lapsDone || 0; if (lapsDone > c.lapsDone) { c.lapsDone = lapsDone; lapDone(c, lapsDone); if (lapsDone >= laps) finishCar(c); } }
         if (c.prog < 0 && lapsDone < 0) c.lapsDone = 0;
@@ -992,10 +1103,11 @@ body.touch .board { display: none; }
   function followSun(t) { const d = T.sunDir; sun.position.set(t.x + d.x * 150, d.y * 150, t.z + d.z * 150); sun.target.position.copy(t); }
 
   // ---------- HUD ----------
+  const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   const fmt = t => !isFinite(t) || t <= 0 ? '--' : `${Math.floor(t / 60)}:${(t % 60).toFixed(2).padStart(5, '0')}`;
   const ordinal = n => n + (['th', 'st', 'nd', 'rd'][(n % 100 - 20) % 10] || ['th', 'st', 'nd', 'rd'][n % 100] || 'th');
   function buildRpm() { $('rpm').innerHTML = Array.from({ length: 16 }, (_, i) => `<i${i > 12 ? ' class="hot"' : ''}></i>`).join(''); }
-  function standings() { return racers.slice().sort((a, b) => (a.finished && b.finished) ? a.place - b.place : a.finished ? -1 : b.finished ? 1 : b.prog - a.prog); }
+  function standings() { return racers.filter(c => !c.left).concat(racers.filter(c => c.left)).sort((a, b) => (a.left !== b.left) ? (a.left ? 1 : -1) : (a.finished && b.finished) ? a.finishTime - b.finishTime : a.finished ? -1 : b.finished ? 1 : b.prog - a.prog); }
   let hudT = 0, toastT = 0, bigT = 0;
   function gearOf(c) { const r = Math.max(0, c.vf) / c.def.top, gs = [0.16, 0.31, 0.47, 0.63, 0.8, 1.3]; let g = 0; while (g < 5 && r > gs[g]) g++; const lo = g ? gs[g - 1] : 0, hi = gs[g]; return { gear: g + 1, rpm: clamp((r - lo) / (hi - lo), 0, 1) }; }
   function updateHud(dt) {
@@ -1011,13 +1123,14 @@ body.touch .board { display: none; }
     $('driftBar').firstChild.style.background = tier ? `rgb(${tierCol[tier].map(v => v * 255 | 0).join(',')})` : '#6ea8ff';
     $('driftLbl').textContent = tier ? ['', 'DRIFT · BOOST READY', 'DRIFT · SUPER', 'DRIFT · ULTRA'][tier] : 'DRIFT';
     $('wrong').hidden = !(c.wrong > 1.2 && state === 'race');
+    if (!$('steerMeter').hidden) $('steerMeter').lastChild.style.transform = `translateX(${(c.steer * 70).toFixed(1)}px)`;
     if (hudT > 0) return; hudT = 0.1;
     const st = standings(), pos = st.indexOf(c) + 1;
     $('hPos').innerHTML = mode === 'trial' ? `<small>TIME TRIAL</small>` : `${pos}<small>/${racers.length}</small>`;
     const lapNo = clamp(Math.floor(c.prog / T.N) + 1, 1, laps); $('hLap').textContent = `LAP ${lapNo}/${laps}`;
     $('hTime').textContent = `${fmt(Math.max(0, raceTime - c.lapStart)) === '--' ? '0:00.00' : fmt(Math.max(0.001, raceTime - c.lapStart))}`;
     const rec = store.best[T.def.id]; $('hBest').textContent = `Best ${fmt(c.bestLap)} · Record ${rec ? fmt(rec.t) : '--'}`;
-    if (mode !== 'trial') $('board').innerHTML = st.map((r, i) => `<div class="${r === c ? 'me' : ''}"><b>${i + 1}</b><i style="background:${r.color}"></i>${r.name}</div>`).join(''); else $('board').innerHTML = ghostBest ? `<div><i style="background:#9fe8ff"></i>Ghost ${fmt(ghostBest.t)}</div>` : '';
+    if (mode !== 'trial') $('board').innerHTML = st.map((r, i) => `<div class="${r === c ? 'me' : ''}"><b>${i + 1}</b><i style="background:${r.color}"></i>${esc(r.name)}${r.left ? ' (left)' : ''}</div>`).join(''); else $('board').innerHTML = ghostBest ? `<div><i style="background:#9fe8ff"></i>Ghost ${fmt(ghostBest.t)}</div>` : '';
     drawMini();
   }
   function toast(text, col) { const el = $('toast'); el.textContent = text; el.style.color = col ? `rgb(${col.map(v => v * 255 | 0).join(',')})` : '#fff'; el.classList.add('on'); toastT = 1.8; }
@@ -1059,7 +1172,9 @@ body.touch .board { display: none; }
   // ---------- results / championship ----------
   const PTS = [10, 7, 5, 3, 2, 1], PRIZE = [700, 450, 300, 200, 150, 100];
   function estimateFinish(c) { if (c.finished) return c.finishTime; const left = (laps * T.N - c.prog) * T.ds; return raceTime + left / Math.max(30, c.def.top * (c.ai ? c.ai.skill : 0.8) * 0.62); }
+  let resultsShown = false;
   function showResults() {
+    if (mode === 'online') return showOnlineResults();
     state = 'finished'; racing = true;
     const order = racers.slice().sort((a, b) => estimateFinish(a) - estimateFinish(b));
     order.forEach((c, i) => c.place = i + 1);
@@ -1088,8 +1203,9 @@ body.touch .board { display: none; }
       else $('rNext').textContent = `Next round: ${TRACKS[ch.round].name}`;
       persist();
     } else $('rNext').textContent = 'Race again';
+    $('rMenu').textContent = 'Main menu';
     $('rTable').innerHTML = rows.join('');
-    showScreen('sResults'); $('touch').hidden = true; $('keys').hidden = true; $('hud').hidden = true; $('speedfx').style.opacity = 0; refreshCoins();
+    showScreen('sResults'); $('touch').hidden = true; $('keys').hidden = true; $('hud').hidden = true; $('steerMeter').hidden = true; $('knob').hidden = true; $('speedfx').style.opacity = 0; refreshCoins();
   }
 
   // ---------- menus ----------
@@ -1101,7 +1217,7 @@ body.touch .board { display: none; }
     const s = gridSlot(0, T.N), i = (s.i + T.N - 40) % T.N;
     previewCar.group.position.set(T.SX[i], 0, T.SZ[i]); previewCar.group.rotation.y = Math.atan2(T.TX[i], T.TZ[i]) + 0.6; raceGroup.add(previewCar.group);
   }
-  function showScreen(id) { for (const s of ['sMenu', 'sTrack', 'sGarage', 'sPause', 'sResults']) $(s).hidden = s !== id; }
+  function showScreen(id) { for (const s of ['sMenu', 'sTrack', 'sGarage', 'sPause', 'sResults', 'sOnline', 'sRoom']) $(s).hidden = s !== id; }
   function refreshCoins() { document.querySelectorAll('.coinsVal').forEach(e => e.textContent = store.coins.toLocaleString()); }
   function syncChips() {
     for (const id of ['soundChip', 'soundChip2']) $(id).setAttribute('aria-pressed', store.sound);
@@ -1113,8 +1229,8 @@ body.touch .board { display: none; }
     $('garageSub').textContent = `${store.owned.length} of ${CARS.length} owned`;
   }
   function toMenu() {
-    state = 'menu'; racing = false; clearRace(); $('keys').hidden = true; $('hud').hidden = true; $('touch').hidden = true; $('speedfx').style.opacity = 0;
-    if (!T) buildTrack(store.track || 0); showPreview(store.car); showScreen('sMenu'); refreshCoins(); syncChips();
+    state = 'menu'; racing = false; clearRace(); $('keys').hidden = true; $('hud').hidden = true; $('touch').hidden = true; $('speedfx').style.opacity = 0; $('steerMeter').hidden = true; $('knob').hidden = true;
+    if (!T) buildTrack(store.track || 0); showPreview(store.car); showScreen('sMenu'); refreshCoins(); syncChips(); syncSteer(); mode = 'quick'; setTimeout(lobbyPresence, 0);
   }
   let trackMode = 'quick', selTrack = store.track || 0;
   function openTracks(m) {
@@ -1150,9 +1266,11 @@ body.touch .board { display: none; }
     $('carCards').querySelectorAll('.ccard').forEach(b => b.onclick = () => { garageSel = b.dataset.c; renderGarage(); });
     showPreview(def.id, store.paint[def.id] || def.color); syncChips(); refreshCoins();
   }
-  function pause() { if (state !== 'race' && state !== 'countdown') return; pausedFrom = state; state = 'paused'; showScreen('sPause'); $('touch').hidden = true; if (AC) AC.suspend(); }
+  function pause() { if (state !== 'race' && state !== 'countdown') return; if (mode === 'online') { showScreen('sPause'); $('pRestart').hidden = true; $('pQuit').innerHTML = 'Leave race <small>Back to the race lobby</small>'; $('pResume').textContent = 'Back to racing'; onlinePauseOpen = true; return; }
+    $('pRestart').hidden = false; $('pQuit').textContent = 'Quit to menu'; $('pResume').textContent = 'Resume'; pausedFrom = state; state = 'paused'; showScreen('sPause'); $('touch').hidden = true; if (AC) AC.suspend(); }
   let pausedFrom = 'race';
-  function resume() { state = pausedFrom; showScreen(null); $('touch').hidden = !isTouch; if (AC) AC.resume(); last = performance.now(); }
+  let onlinePauseOpen = false;
+  function resume() { if (onlinePauseOpen) { onlinePauseOpen = false; showScreen(null); $('touch').hidden = !isTouch; return; } state = pausedFrom; showScreen(null); $('touch').hidden = !isTouch; if (AC) AC.resume(); last = performance.now(); }
 
   $('bQuick').onclick = () => { initAudio(); openTracks('quick'); };
   $('bTrial').onclick = () => { initAudio(); openTracks('trial'); };
@@ -1167,10 +1285,10 @@ body.touch .board { display: none; }
   $('qualChip').onclick = () => { store.hq = !store.hq; persist(); resize(); syncChips(); };
   $('pResume').onclick = resume;
   $('pRestart').onclick = () => { if (AC) AC.resume(); startRace(mode, T.ti); };
-  $('pQuit').onclick = () => { if (AC) AC.resume(); toMenu(); };
+  $('pQuit').onclick = () => { if (AC) AC.resume(); if (mode === 'online' && NET.race) { onlinePauseOpen = false; backToRoom(); } else toMenu(); };
   $('pauseBtn').onclick = pause; $('camBtn').onclick = cycleCam; $('resetBtn').onclick = () => { if (player && racing && !player.finished) respawn(player); };
-  $('rNext').onclick = () => { if (mode === 'champ') { if (!store.champ) store.champ = { round: 0, points: {} }; persist(); startRace('champ', store.champ.round); } else startRace(mode, T.ti); };
-  $('rMenu').onclick = toMenu;
+  $('rNext').onclick = () => { if (mode === 'online') { backToRoom(); return; } if (mode === 'champ') { if (!store.champ) store.champ = { round: 0, points: {} }; persist(); startRace('champ', store.champ.round); } else startRace(mode, T.ti); };
+  $('rMenu').onclick = () => { if (mode === 'online') leaveRace().then(toMenu); else toMenu(); };
 
   // ---------- main loop ----------
   let last = performance.now();
@@ -1183,6 +1301,180 @@ body.touch .board { display: none; }
   }
   buildTrack(store.track || 0); toMenu(); requestAnimationFrame(frame);
 
+  // ---------- online multiplayer ----------
+  // Built on the artifact "room": the lobby is everyone who has the game open; each race is a named room.
+  // Everything travels as presence (latest state wins), so no message ever needs to be replayed.
+  // What other pages send is untrusted: validate numbers, escape names, never trust it for anything but drawing.
+  const NET = { room: null, race: null, code: null, myPeer: null, lobby: [], peers: [], seenSeq: 0, capturing: false, seq: 0, track: 0, laps: 3, sendT: 0, nick: '', available: null };
+  const cleanNick = v => String(v || '').replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u206f]/g, '').trim().slice(0, 16) || 'Driver';
+  NET.nick = cleanNick(load('apex-nick', '') || 'Driver ' + (100 + Math.floor(Math.random() * 900)));
+  const num = (v, d = 0) => (typeof v === 'number' && isFinite(v)) ? v : d;
+  const racePeer = peer => NET.peers.find(p => p.peer === peer);
+  const humans = list => list.filter(p => p.kind === 'viewer');
+  function setLive(el, text, on) { el.classList.toggle('off', !on); el.querySelector('span').textContent = text; }
+  async function connectNet(tries = 0) {
+    if (!(window.claude && typeof window.claude.use === 'function')) {
+      if (tries < 6) return setTimeout(() => connectNet(tries + 1), 500);
+      NET.available = false; renderOnline(); return;
+    }
+    let room = null; try { room = await window.claude.use('room'); } catch (e) {}
+    if (!room) { NET.available = false; renderOnline(); return; }
+    NET.room = room; NET.available = true;
+    room.onPeers(ch => { NET.lobby = humans(ch.peers); const me = ch.peers.find(p => p.sameTab); if (me) NET.myPeer = me.peer; renderOnline(); }, () => { NET.available = false; NET.room = null; renderOnline(); });
+    lobbyPresence(); renderOnline();
+  }
+  function lobbyPresence() {
+    if (!NET.room) return;
+    const inRace = !!NET.race, racingNow = inRace && mode === 'online' && (state === 'race' || state === 'countdown');
+    NET.room.presence({ nick: NET.nick, car: store.car, st: racingNow ? 'racing' : inRace ? 'room' : 'menu', open: inRace && NET.host && !racingNow ? NET.code : null, track: NET.track }).catch(() => {});
+  }
+  function renderOnline() {
+    const n = NET.lobby.length;
+    $('onlineSub').textContent = NET.available === false ? 'Open the shared link to race' : n > 1 ? `${n} drivers online now` : 'Race your friends live';
+    if (NET.available === false) { setLive($('liveCount'), 'Offline', false); $('onlineNote').textContent = 'Online racing works when Apex Rush is opened from its shared Claude link while you are signed in. Share the link with friends in your organization, or invite them, and open it at the same time.'; $('bHost').disabled = true; $('bJoinCode').disabled = true; }
+    else if (NET.available) { setLive($('liveCount'), `${n} online`, true); $('bHost').disabled = false; $('bJoinCode').disabled = false; }
+    const stTxt = { menu: 'In the menus', room: 'In a race lobby', racing: 'Racing' };
+    $('people').innerHTML = NET.lobby.length ? NET.lobby.map(p => `<div class="pcard"><div><b>${esc(cleanNick(p.presence.nick))}</b>${p.sameTab ? ' <span class="tag">you</span>' : p.guest ? ' <span>guest</span>' : ''}<br><span>${esc(stTxt[p.presence.st] || 'Online')}${p.presence.car ? ' · ' + esc(carById(String(p.presence.car)).name) : ''}</span></div></div>`).join('') : `<p class="empty">${NET.available === false ? 'Not connected.' : 'Nobody else is here yet. Send a friend the link.'}</p>`;
+    const open = NET.lobby.filter(p => !p.sameTab && typeof p.presence.open === 'string' && /^[a-z0-9]{3,6}$/.test(p.presence.open));
+    $('openRaces').innerHTML = open.length ? open.map(p => `<div class="pcard"><div><b>${esc(cleanNick(p.presence.nick))}'s race</b><br><span>${esc((TRACKS[clamp(num(p.presence.track), 0, TRACKS.length - 1) | 0] || TRACKS[0]).name)} · code ${esc(p.presence.open)}</span></div><button class="chip" data-join="${esc(p.presence.open)}">Join</button></div>`).join('') : '<p class="empty">No open races. Host one!</p>';
+    $('openRaces').querySelectorAll('[data-join]').forEach(b => b.onclick = () => joinRace(b.dataset.join, false));
+  }
+  function openOnline() { $('nick').value = NET.nick; showScreen('sOnline'); renderOnline(); if (NET.available === null) connectNet(); }
+  $('nick').addEventListener('input', () => { NET.nick = cleanNick($('nick').value); save('apex-nick', NET.nick); lobbyPresence(); if (NET.race) racePresence({ nick: NET.nick }); });
+  const randCode = () => Array.from({ length: 4 }, () => 'abcdefghjkmnpqrstuvwxyz23456789'[Math.floor(Math.random() * 31)]).join('');
+  async function joinRace(code, asHost) {
+    code = String(code || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 6);
+    if (!NET.room || code.length < 3) { toast('Enter a race code'); return; }
+    if (NET.race) await leaveRace();
+    let r; try { r = await NET.room.join('apex-' + code); } catch (e) { toast(e && e.code === 'limit_reached' ? 'Too many races open, try again' : 'Could not join that race'); return; }
+    NET.race = r; NET.code = code; NET.host = !!asHost; NET.peers = []; NET.seq = 0; NET.seenSeq = 0;
+    if (asHost) { NET.track = T ? T.ti : 0; NET.laps = store.laps; }
+    // starts already announced before we arrived belong to someone else's race: note them, don't run them
+    NET.capturing = true; setTimeout(() => { NET.capturing = false; if (NET.race === r) onRacePeers({ left: [] }); }, 1500);
+    r.onPeers(ch => { NET.peers = humans(ch.peers); const me = ch.peers.find(p => p.sameTab); if (me) NET.myPeer = me.peer; onRacePeers(ch); }, () => { toast('Lost the race connection'); NET.race = null; if (mode === 'online' && state !== 'menu') toMenu(); else openOnline(); });
+    racePresence({ nick: NET.nick, car: store.car, paint: store.paint[store.car] || carById(store.car).color, host: NET.host, sel: NET.host ? { track: NET.track, laps: NET.laps } : null, start: null, st: null, fin: null });
+    lobbyPresence(); showScreen('sRoom'); renderRoom();
+  }
+  function racePresence(patch) { if (NET.race) NET.race.presence(patch).catch(() => {}); }
+  async function leaveRace() {
+    const r = NET.race; NET.race = null; NET.host = false; NET.code = null;
+    if (r) { try { await r.leave(); } catch (e) {} }
+    lobbyPresence();
+  }
+  function hostPeer() {
+    const byLabel = (a, b) => a.peer < b.peer ? -1 : 1;
+    const flagged = NET.peers.filter(p => p.presence.host === true).sort(byLabel);
+    if (flagged.length) {
+      // two pages claiming host (a race on arrival): the same one wins everywhere, the other steps down
+      if (NET.host && !flagged[0].sameTab) { NET.host = false; racePresence({ host: false, sel: null }); lobbyPresence(); }
+      return flagged[0];
+    }
+    // nobody hosts (the host left): once the room has settled, the earliest label takes over on every page
+    const next = NET.peers.slice().sort(byLabel)[0];
+    if (next && next.sameTab && !NET.host && !NET.capturing) { NET.host = true; racePresence({ host: true, sel: { track: NET.track, laps: NET.laps } }); lobbyPresence(); }
+    return next;
+  }
+  function onRacePeers(ch) {
+    const h = hostPeer();
+    if (h && !h.sameTab && h.presence.sel) { const tr = clamp(num(h.presence.sel.track) | 0, 0, TRACKS.length - 1), lp = [2, 3, 5].includes(h.presence.sel.laps) ? h.presence.sel.laps : 3; if (tr !== NET.track || lp !== NET.laps) { NET.track = tr; NET.laps = lp; if (state === 'menu' && !$('sRoom').hidden) { buildTrack(tr); showPreview(store.car); } } }
+    const st = h && h.presence.start;
+    if (st && typeof st === 'object' && num(st.seq) > NET.seenSeq) {
+      NET.seenSeq = num(st.seq);
+      const grid = Array.isArray(st.grid) ? st.grid.filter(x => typeof x === 'string').slice(0, 8) : [];
+      if (!NET.capturing && grid.includes(NET.myPeer) && grid.length >= 2) {
+        startRace('online', clamp(num(st.track) | 0, 0, TRACKS.length - 1), { grid, laps: [2, 3, 5].includes(st.laps) ? st.laps : 3 });
+        racePresence({ fin: null, best: null, st: null }); lobbyPresence();
+      }
+    }
+    for (const p of ch.left) { const c = racers.find(r => r.remote === p.peer); if (c && !c.finished) { c.left = true; c.mesh.group.visible = false; if (state === 'race') toast(`${cleanNick(c.name)} left the race`); } }
+    if (!$('sRoom').hidden) renderRoom();
+    if (mode === 'online' && state === 'finished') renderOnlineTable();
+  }
+  function renderRoom() {
+    if (!NET.race) return;
+    const h = hostPeer(), amHost = NET.host;
+    $('roomCode').textContent = NET.code.toUpperCase(); $('roomTrack').textContent = TRACKS[NET.track].name;
+    $('roomNote').textContent = amHost ? (NET.peers.length > 1 ? 'Everyone is in. Pick the track and start when ready.' : `Waiting for drivers. Friends can join from Race online, or with code ${NET.code.toUpperCase()}.`) : `Waiting for ${cleanNick(h && h.presence.nick)} to start the race.`;
+    $('hostOpts').hidden = !amHost; $('bStartOnline').hidden = !amHost; $('bStartOnline').disabled = NET.peers.length < 2;
+    $('bStartOnline').innerHTML = NET.peers.length < 2 ? 'Start race <small>Needs 2+ drivers</small>' : `Start race <small>${NET.peers.length} drivers · ${NET.laps} laps</small>`;
+    $('roomTracks').innerHTML = TRACKS.map((t, i) => `<button class="chip" data-rt="${i}" aria-pressed="${i === NET.track}">${t.name}</button>`).join('');
+    $('roomLaps').innerHTML = [2, 3, 5].map(l => `<button class="chip" data-rl="${l}" aria-pressed="${l === NET.laps}">${l}</button>`).join('');
+    $('roomTracks').querySelectorAll('[data-rt]').forEach(b => b.onclick = () => { NET.track = +b.dataset.rt; racePresence({ sel: { track: NET.track, laps: NET.laps } }); lobbyPresence(); buildTrack(NET.track); showPreview(store.car); renderRoom(); });
+    $('roomLaps').querySelectorAll('[data-rl]').forEach(b => b.onclick = () => { NET.laps = +b.dataset.rl; racePresence({ sel: { track: NET.track, laps: NET.laps } }); renderRoom(); });
+    $('roomCount').textContent = `Drivers (${NET.peers.length}/8)`;
+    $('roomPeople').innerHTML = NET.peers.map(p => { const def = carById(String(p.presence.car || 'raptor')), col = /^#[0-9a-f]{6}$/i.test(p.presence.paint || '') ? p.presence.paint : def.color; return `<div class="pcard"><div><b><i class="dot" style="background:${col}"></i>${esc(cleanNick(p.presence.nick))}</b>${p.sameTab ? ' <span class="tag">you</span>' : ''}<br><span>${esc(def.name)}</span></div>${p === h ? '<span class="tag">Host</span>' : ''}</div>`; }).join('');
+  }
+  function hostStart() {
+    if (!NET.host || NET.peers.length < 2) return;
+    const grid = NET.peers.slice(0, 8).map(p => p.peer).sort(() => Math.random() - 0.5);
+    NET.seq = Math.max(NET.seq, NET.seenSeq) + 1;
+    racePresence({ start: { seq: NET.seq, track: NET.track, laps: NET.laps, grid } });
+  }
+  // send our car ~15 times a second; others draw it from this
+  function netSend(dt) {
+    NET.sendT -= dt; if (NET.sendT > 0 || !player || !NET.race) return; NET.sendT = 1 / 15;
+    const c = player, r2 = v => Math.round(v * 100) / 100;
+    const flags = (c.nitroOn ? 1 : 0) | (c.boost > 0 ? 2 : 0) | (c.drift ? 4 : 0) | (c.input.brake && c.vf > 1 ? 8 : 0);
+    racePresence({ st: [r2(c.x), r2(c.z), Math.round(c.h * 1000) / 1000, r2(c.vf), r2(c.steer), Math.round(c.prog), flags, r2(c.vl)], fin: c.finished ? r2(c.finishTime) : null, best: isFinite(c.bestLap) ? r2(c.bestLap) : null });
+  }
+  function followRemotes(dt) {
+    const now = performance.now();
+    for (const c of racers) {
+      if (!c.remote || c.left) continue;
+      const p = racePeer(c.remote);
+      if (!p) continue;
+      const pr = p.presence, st = Array.isArray(pr.st) ? pr.st : null;
+      if (pr.fin != null && num(pr.fin, 0) > 0 && !c.finished) { c.finished = true; c.finishTime = num(pr.fin); if (state === 'race' && !player.finished) toast(`${cleanNick(c.name)} finished`); }
+      if (pr.best != null) c.bestLap = num(pr.best, Infinity);
+      if (!st || st.length < 8) { if (c.hadState && !c.finished && state === 'race') { c.left = true; c.mesh.group.visible = false; toast(`${cleanNick(c.name)} left the race`); } continue; }
+      c.hadState = true;
+      if (p.updatedAt !== c.netAt) { c.netAt = p.updatedAt; c.netT = now; }
+      const age = Math.min(0.3, (now - (c.netT || now)) / 1000), h = num(st[2]), vf = clamp(num(st[3]), -20, 140);
+      const tx = num(st[0]) + Math.sin(h) * vf * age, tz = num(st[1]) + Math.cos(h) * vf * age;
+      if (Math.hypot(tx - c.x, tz - c.z) > 25) { c.x = tx; c.z = tz; c.h = h; }   // teleport after a respawn or a long gap
+      const k = 1 - Math.exp(-dt * 14); c.x = lerp(c.x, tx, k); c.z = lerp(c.z, tz, k); c.h += wrapA(h - c.h) * k;
+      c.vx = Math.sin(c.h) * vf; c.vz = Math.cos(c.h) * vf; c.vf = vf; c.vl = clamp(num(st[7]), -30, 30); c.steer = clamp(num(st[4]), -1, 1); c.prog = num(st[5]);
+      const f = num(st[6]) | 0; c.nitroOn = !!(f & 1); c.boost = f & 2 ? 0.05 : 0; c.drift = f & 4 ? 1 : 0; c.input.brake = f & 8 ? 1 : 0; c.input.gas = f & 8 ? 0 : 1;
+      // keep our idea of where it is on the track, for sparks and the map
+      const N = T.N; let best = c.idx, bd = Infinity; for (let kk = -14; kk <= 14; kk++) { const i = (c.idx + kk + N) % N, dx = c.x - T.SX[i], dz = c.z - T.SZ[i], dd = dx * dx + dz * dz; if (dd < bd) { bd = dd; best = i; } }
+      c.idx = best; c.off = (c.x - T.SX[best]) * T.NX[best] + (c.z - T.SZ[best]) * T.NZ[best];
+    }
+  }
+  let onlineCoins = 0;
+  function showOnlineResults() {
+    state = 'finished'; racing = true;
+    if (!resultsShown) {
+      resultsShown = true;
+      const place = player.place || 1, n = racers.length;
+      onlineCoins = Math.round(PRIZE[Math.min(place, 6) - 1] * (n >= 4 ? 1.5 : 1.2)); store.coins += onlineCoins; persist();
+    }
+    $('rMode').textContent = `Online race · ${T.def.name}`;
+    $('rNext').innerHTML = NET.host ? 'Back to the race lobby <small>Start the next one</small>' : 'Back to the race lobby'; $('rMenu').textContent = 'Leave online';
+    renderOnlineTable();
+    showScreen('sResults'); $('touch').hidden = true; $('keys').hidden = true; $('hud').hidden = true; $('steerMeter').hidden = true; $('knob').hidden = true; $('speedfx').style.opacity = 0; refreshCoins();
+  }
+  function renderOnlineTable() {
+    const order = standings(), place = order.indexOf(player) + 1;
+    $('rPos').innerHTML = `${place}<small>${ordinal(place).replace(/\d+/, '')}</small>`;
+    $('rTitle').textContent = place === 1 ? 'Victory!' : place <= 3 ? 'Podium finish' : 'Good race';
+    $('rReward').innerHTML = `<span>Prize <b>${onlineCoins}</b> coins</span><span class="coins"><i class="coin"></i>+${onlineCoins}</span>`;
+    $('rTable').innerHTML = order.map((c, i) => `<tr class="${c.isPlayer ? 'me' : ''}"><td>${i + 1}</td><td>${esc(cleanNick(c.name))}<br><small style="color:var(--muted)">${esc(c.def.name)}</small></td><td class="t">${c.left ? 'Left' : c.finished ? fmt(c.finishTime) : 'Racing… lap ' + clamp(Math.floor(c.prog / T.N) + 1, 1, laps)}<br><small>best ${fmt(c.bestLap)}</small></td></tr>`).join('');
+  }
+  function backToRoom() {
+    state = 'menu'; racing = false; clearRace(); $('keys').hidden = true; $('hud').hidden = true; $('touch').hidden = true; $('speedfx').style.opacity = 0; $('steerMeter').hidden = true; $('knob').hidden = true;
+    racePresence({ st: null, fin: null, best: null }); mode = 'quick';
+    if (!T || T.ti !== NET.track) buildTrack(NET.track); showPreview(store.car);
+    if (NET.race) { showScreen('sRoom'); renderRoom(); } else openOnline();
+    lobbyPresence();
+  }
+  $('bOnline').onclick = () => { initAudio(); openOnline(); };
+  $('bHost').onclick = () => joinRace(randCode(), true);
+  $('bJoinCode').onclick = () => joinRace($('codeIn').value, false);
+  $('codeIn').addEventListener('keydown', e => { if (e.key === 'Enter') joinRace($('codeIn').value, false); });
+  $('bLeave').onclick = () => leaveRace().then(openOnline);
+  $('bStartOnline').onclick = hostStart;
+  connectNet();
+
   // test hook: drive the simulation without waiting for real time
   window.__race = {
     start: (m = 'quick', ti = 0) => startRace(m, ti), get state() { return state; }, get player() { return player; }, get racers() { return racers; }, get T() { return T; },
@@ -1190,7 +1482,7 @@ body.touch .board { display: none; }
     autopilot() { if (player) player.ai = { skill: 0.92, topK: 1, lane: 0, laneT: 0, t: 0, aggr: 0.02 }; },
     debug: () => ({ smoke: smoke.count(), sparks: sparks.count(), slip: racers.map(c => Math.abs(c.vl).toFixed(1)).join(','), off: racers.map(c => c.off.toFixed(1)).join(',') }),
     standings: () => standings().map(c => `${c.name}:${(c.prog / T.N).toFixed(2)}${c.finished ? ' F' : ''}`),
-    store, toMenu, openGarage, openTracks, buildTrack, cycleCam, render: () => renderer.render(scene, camera),
+    NET, joinRace, hostStart, openOnline, store, toMenu, openGarage, openTracks, buildTrack, cycleCam, render: () => renderer.render(scene, camera),
   };
 })();
 </script>
