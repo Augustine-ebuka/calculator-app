@@ -133,6 +133,10 @@ h2.title { font-family: var(--display); font-style: italic; font-weight: 800; fo
 #big.on { opacity: 1; }
 #toast { top: 22%; font-weight: 700; font-size: clamp(15px, 4.4vw, 22px); letter-spacing: .06em; text-transform: uppercase; text-shadow: 0 2px 10px rgba(0,0,0,.8); opacity: 0; transition: opacity .2s; white-space: nowrap; }
 #toast.on { opacity: 1; }
+#keys { bottom: 12%; display: flex; gap: 10px 18px; flex-wrap: wrap; justify-content: center; width: min(720px, 94vw); background: rgba(8,9,14,.82); border: 1px solid var(--line); border-radius: 10px; padding: 12px 18px; font-family: var(--ui); font-size: 14px; color: #dfe3ea; }
+#keys b { font-family: var(--display); font-size: 16px; color: #fff; }
+#keys kbd { display: inline-block; min-width: 26px; padding: 2px 7px; margin: 0 2px; border: 1px solid rgba(255,255,255,.4); border-bottom-width: 3px; border-radius: 5px; font-family: var(--ui); font-weight: 600; color: #fff; text-align: center; }
+#keys .gasKey { color: #8dff9a; }
 #wrong { top: 40%; font-weight: 800; font-size: 34px; color: #fff; background: var(--red); padding: 6px 18px; transform: translateX(-50%) skewX(-10deg); }
 #speedfx { position: fixed; inset: 0; z-index: 4; pointer-events: none; opacity: 0;
   background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,.0) 0deg 4deg, rgba(255,255,255,.22) 4.4deg 4.8deg, rgba(255,255,255,0) 5.2deg 9deg);
@@ -198,6 +202,7 @@ body.touch .board { display: none; }
   <div class="center" id="big"></div>
   <div class="center" id="toast"></div>
   <div class="center" id="wrong" hidden>WRONG WAY</div>
+  <div class="center" id="keys" hidden><span class="gasKey"><b>Accelerate</b> hold <kbd>↑</kbd> or <kbd>W</kbd></span><span><b>Steer</b> <kbd>←</kbd><kbd>→</kbd> or <kbd>A</kbd><kbd>D</kbd></span><span><b>Brake</b> <kbd>↓</kbd> or <kbd>S</kbd></span><span><b>Drift</b> <kbd>Space</kbd> while turning</span><span><b>Nitro</b> <kbd>Shift</kbd></span></div>
 </div>
 
 <div id="touch" hidden>
@@ -821,6 +826,7 @@ body.touch .board { display: none; }
   }
 
   // ---------- race state ----------
+  let idleT = 0;
   let state = 'menu', mode = 'quick', racing = false, raceTime = 0, countT = 0, lightsOn = 0, goAt = 0, laps = 3, finishOrder = [], camMode = 0, shake = 0, resultsT = 0;
   let ghostRec = [], ghostBest = null, ghostT = 0, lapForGhost = 0;
   function clearRace() { for (const c of racers) { raceGroup.remove(c.mesh.group); disposeCar(c.mesh.group); } racers.length = 0; player = null; if (ghost) { raceGroup.remove(ghost.group); ghost = null; } smoke.clear(); sparks.clear(); }
@@ -850,6 +856,7 @@ body.touch .board { display: none; }
     $('lights').hidden = false; $('lights').querySelectorAll('i').forEach(i => i.classList.remove('on'));
     $('pTitle').textContent = T.def.name; camMode = camMode || 0; snapCam = true;
     buildRpm();
+    idleT = 0; $('keys').hidden = isTouch;
     if (isTouch && innerHeight > innerWidth) setTimeout(() => toast('Turn sideways for a wider view'), 300);
   }
   function setupGhost() {
@@ -896,6 +903,7 @@ body.touch .board { display: none; }
     }
     if (state === 'race') {
       raceTime += dt;
+      if (player && !isTouch) { if (Math.abs(player.vf) > 8) { $('keys').hidden = true; idleT = -1e9; } else if (raceTime > 0) { idleT += dt; if (idleT > 2.5 && idleT < 1e8) { $('keys').hidden = false; if (idleT > 2.5 && idleT - dt <= 2.5) toast('Hold ↑ or W to accelerate'); } } }
       if (player && !player.ai) player.input = player.forced || playerInput();
       for (const c of racers) if (c.ai) aiInput(c, dt);
       const steps = 2, h = dt / steps;
@@ -1081,7 +1089,7 @@ body.touch .board { display: none; }
       persist();
     } else $('rNext').textContent = 'Race again';
     $('rTable').innerHTML = rows.join('');
-    showScreen('sResults'); $('touch').hidden = true; $('hud').hidden = true; $('speedfx').style.opacity = 0; refreshCoins();
+    showScreen('sResults'); $('touch').hidden = true; $('keys').hidden = true; $('hud').hidden = true; $('speedfx').style.opacity = 0; refreshCoins();
   }
 
   // ---------- menus ----------
@@ -1105,7 +1113,7 @@ body.touch .board { display: none; }
     $('garageSub').textContent = `${store.owned.length} of ${CARS.length} owned`;
   }
   function toMenu() {
-    state = 'menu'; racing = false; clearRace(); $('hud').hidden = true; $('touch').hidden = true; $('speedfx').style.opacity = 0;
+    state = 'menu'; racing = false; clearRace(); $('keys').hidden = true; $('hud').hidden = true; $('touch').hidden = true; $('speedfx').style.opacity = 0;
     if (!T) buildTrack(store.track || 0); showPreview(store.car); showScreen('sMenu'); refreshCoins(); syncChips();
   }
   let trackMode = 'quick', selTrack = store.track || 0;
