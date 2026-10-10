@@ -5,6 +5,7 @@ The home page (`index.html`) is the Game Room: it links to the calculator and th
 - `basketball/` holds Hoop Shot 3D
 - `forest/` holds Forest Range
 - `skyfall/` holds Skyfall Defense
+- `muse/` holds Runway Muse
 
 ## Calculator (calculator/)
 The calculator consists of three files: index.html, style.css and script.js
@@ -63,3 +64,22 @@ A vertical arcade shooter. Meteors and alien raiders fall on a city at night; yo
 - **Upgrades:** after each level pick 1 of 3 permanent upgrades (damage, fire rate, extra barrels, wingman drones, tractor beam, critical hits, bomb bay, city shield, longer power-ups).
 - **Combo multiplier** up to ×5 for kills in quick succession, and a city bonus for every wave you clear with the shield intact. Your best score is saved.
 - Meteors glow and trail fire as they burn through the atmosphere, big ones split into shards, and explosions shake the screen. Sound effects and a driving bass soundtrack are made live in the browser, and the music speeds up as you level up.
+
+## Runway Muse (muse/)
+A 3D fashion styling game. Start by choosing **Her** or **Him**, then dress a 3D model you can turn, zoom and view from the front, side, back or face. A built-in stylist tells you how the look is working.
+
+- **3D clothes:** each garment is shaped around the body. Wrinkles and drape are built into the cloth, and each fabric has its own look: cotton weave, denim twill, chunky knit, satin silk, wool, glossy leather and quilted nylon. Coats sit over tops, flare over skirts and stay open at the front.
+- **Two wardrobes:** hers has tees, blouses, crop tops, camisoles, jeans, wide trousers, pencil, midi and pleated skirts, dresses (slip, sundress, wrap, bodycon, gown), blazers, trenches, cardigans, puffers, heels, boots, bags and jewellery. His has tees, Oxford shirts, polos, sweaters, chinos, suit trousers, blazers, overcoats, bombers, oxfords, loafers, chelsea boots, ties, watches and glasses. Both come in 25 colours and six prints, with five hairstyles, eight hair colours and six skin tones.
+- **The stylist** uses well-known colour rules for clothes:
+  - colour families on the colour wheel;
+  - monochrome, analogous, complementary and triadic schemes, and clashing pairs;
+  - the 60-30-10 balance and no more than about three main colours;
+  - grounding brights with neutrals, light/dark contrast, and colours that suit your skin's warm or cool undertone;
+  - one print at a time and matched formality (no sneakers with a gown);
+  - for him: belt matches shoes and the tie is darker than the shirt.
+
+  Most notes come with a one-tap **Fix**, and every colour picker stars the stylist's top three colours.
+- **Client briefs** for each model, such as coffee date, wedding guest, office, beach, gala, winter and job interview, each with a live checklist. Score 3 stars to unlock the next brief.
+- **Runway:** the model turns under camera flashes while three judges score colour, occasion and styling. You earn coins to unlock premium pieces and prints.
+- **Style me** builds a complete look for the current brief, and **Lookbook** saves snapshots of your favourite outfits. Progress is saved in your browser.
+- The earlier flat version is still available at `muse/2d.html`.

@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Runway Muse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,500;0,6..96,700;1,6..96,500&family=Jost:wght@400;500;600&display=swap">
+<style>
+/* Layout: a fashion-house studio. Desktop: 3D model stage | wardrobe | stylist notes. Phones stack stage, stylist, wardrobe.
+   Palette: ink and porcelain with one fuchsia accent, like a fashion magazine. */
+:root {
+  --paper: #f6f2f4; --card: #ffffff; --ink: #1d1720; --muted: #74697a; --line: #e4dbe2;
+  --accent: #c2185b; --accent-soft: #fbe3ec; --good: #2e7d5b; --warn: #c0612b; --gold: #b8913a;
+  --display: "Bodoni Moda", "Didot", "Bodoni 72", Georgia, serif;
+  --body: "Jost", "Futura", "Century Gothic", system-ui, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { min-height: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.4; }
+button { font-family: inherit; color: inherit; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 16px; background: rgba(246,242,244,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.brand { font-family: var(--display); font-size: 26px; font-weight: 700; margin-right: auto; }
+.brand i { font-style: italic; font-weight: 500; color: var(--accent); }
+.pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 7px 13px; font-size: 14px; font-weight: 500; cursor: pointer; text-decoration: none; color: var(--ink); white-space: nowrap; }
+.pill.cta { background: var(--ink); color: #fff; border-color: var(--ink); }
+.pill.cta:hover { background: var(--accent); border-color: var(--accent); }
+.coin { width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ffe9a8, var(--gold)); display: inline-block; flex: none; }
+
+.app { display: grid; gap: 16px; padding: 16px; grid-template-columns: minmax(320px, 440px) minmax(0, 1fr) minmax(260px, 330px); align-items: start; max-width: 1500px; margin: 0 auto; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; min-width: 0; }
+.stage-wrap { position: sticky; top: 76px; display: grid; gap: 10px; }
+.brief { padding: 12px 14px; display: grid; gap: 6px; }
+.eyebrow { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+.brief h2 { font-family: var(--display); font-size: 24px; margin: 0; line-height: 1.1; }
+.brief p { margin: 0; color: var(--muted); font-size: 14px; }
+.checks { display: flex; flex-wrap: wrap; gap: 6px; }
+.check { font-size: 12.5px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.check.ok { background: #e6f4ec; border-color: #bfe3cf; color: var(--good); }
+.check.ok::before { content: "✓ "; }
+.check.no { background: #fdeee8; border-color: #f4cdbd; color: var(--warn); }
+.check.no::before { content: "✕ "; }
+.stage { position: relative; aspect-ratio: 3 / 4; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #ece4e8; touch-action: none; cursor: grab; }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.score-badge { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,.9); border-radius: 12px; padding: 6px 10px; text-align: center; border: 1px solid var(--line); pointer-events: none; }
+.score-badge b { display: block; font-family: var(--display); font-size: 28px; line-height: 1; }
+.score-badge span { font-size: 10px; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); }
+.stars { color: var(--gold); letter-spacing: 1px; font-size: 13px; }
+.views { position: absolute; left: 10px; bottom: 10px; display: flex; gap: 4px; }
+.views button { border: 1px solid var(--line); background: rgba(255,255,255,.9); border-radius: 999px; padding: 5px 10px; font-size: 12.5px; cursor: pointer; }
+.hint { position: absolute; left: 10px; top: 10px; font-size: 12px; color: var(--muted); background: rgba(255,255,255,.85); padding: 4px 8px; border-radius: 999px; pointer-events: none; }
+.stage-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.stage-actions .pill { flex: 1; justify-content: center; }
+
+.wardrobe { padding: 0 0 14px; }
+.tabs { display: flex; gap: 2px; overflow-x: auto; padding: 8px 8px 0; border-bottom: 1px solid var(--line); scrollbar-width: thin; }
+.tab { flex: none; border: 0; background: none; padding: 10px 12px 9px; font-size: 14px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.section { padding: 12px 14px 0; display: grid; gap: 8px; }
+.section h3 { margin: 0; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.item { position: relative; border: 1px solid var(--line); background: #fbf9fa; border-radius: 10px; padding: 4px 4px 6px; cursor: pointer; display: grid; justify-items: center; gap: 2px; font-size: 12px; }
+.item img, .item .none { width: 76px; height: 76px; object-fit: contain; }
+.item .none { display: grid; place-items: center; color: var(--muted); font-size: 26px; }
+.item[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; background: var(--accent-soft); }
+.item .price { position: absolute; top: 4px; right: 4px; font-size: 10.5px; font-weight: 600; background: var(--ink); color: #fff; border-radius: 999px; padding: 1px 6px; display: flex; gap: 3px; align-items: center; }
+.item.locked img { opacity: .5; filter: grayscale(.6); }
+.swatches { display: flex; flex-wrap: wrap; gap: 7px; }
+.sw { position: relative; width: 32px; height: 32px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); cursor: pointer; padding: 0; }
+.sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink); }
+.sw .pick { position: absolute; top: -6px; right: -6px; background: var(--accent); color: #fff; border-radius: 999px; font-size: 9px; font-weight: 600; padding: 1px 4px; border: 1.5px solid #fff; }
+.picks-note { font-size: 13px; color: var(--muted); margin: 0; }
+.picks-note b { color: var(--accent); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: #fbf9fa; border-radius: 999px; padding: 6px 12px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.chip[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: #fff; }
+.chip i.dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+.unlock { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 14px; }
+.unlock button { margin-left: auto; }
+
+.stylist { padding: 14px; display: grid; gap: 12px; position: sticky; top: 76px; max-height: calc(100vh - 92px); overflow-y: auto; }
+.stylist h3 { margin: 0; font-family: var(--display); font-size: 22px; }
+.ring-row { display: flex; align-items: center; gap: 14px; }
+.ring { width: 84px; height: 84px; flex: none; }
+.areas { display: grid; gap: 6px; flex: 1; min-width: 0; }
+.area { display: grid; grid-template-columns: 70px 1fr 26px; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+.area .bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.area .bar i { display: block; height: 100%; background: var(--ink); border-radius: 3px; transition: width .3s; }
+.area b { font-variant-numeric: tabular-nums; color: var(--ink); text-align: right; }
+.palette-strip { display: flex; height: 22px; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
+.palette-strip span { flex: 1; }
+.harmony { font-size: 13px; color: var(--muted); }
+.harmony b { color: var(--ink); }
+.notes { display: grid; gap: 8px; }
+.note { border-radius: 10px; padding: 9px 11px; font-size: 14px; display: grid; gap: 6px; border: 1px solid var(--line); }
+.note.good { background: #eef8f2; border-color: #cfeadb; }
+.note.warn { background: #fdf1ea; border-color: #f4d6c4; }
+.note.tip { background: #f4f1fb; border-color: #e0d8f2; }
+.note .k { font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+.note.good .k { color: var(--good); } .note.warn .k { color: var(--warn); } .note.tip .k { color: #6a4fb0; }
+.note button { justify-self: start; border: 1px solid var(--ink); background: var(--ink); color: #fff; border-radius: 999px; padding: 4px 11px; font-size: 12.5px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.note button i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; border: 1px solid #fff; }
+
+.overlay { position: fixed; inset: 0; z-index: 50; background: rgba(29,23,32,.55); display: grid; place-items: center; padding: 16px; overflow-y: auto; }
+.sheet { background: var(--card); border-radius: 16px; width: min(760px, 100%); padding: 18px; display: grid; gap: 14px; max-height: calc(100vh - 32px); overflow-y: auto; }
+.sheet-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.sheet h2 { font-family: var(--display); font-size: 30px; margin: 0; }
+.challenges { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.ch { text-align: left; border: 1px solid var(--line); border-radius: 12px; padding: 0; overflow: hidden; background: #fff; cursor: pointer; display: grid; }
+.ch .scene { height: 56px; }
+.ch .body { padding: 10px 12px; display: grid; gap: 3px; }
+.ch .body b { font-family: var(--display); font-size: 18px; }
+.ch .body span { font-size: 13px; color: var(--muted); }
+.ch.locked { opacity: .55; cursor: not-allowed; }
+.looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.look { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #fff; cursor: pointer; padding: 0; display: grid; }
+.look img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; }
+.look span { font-size: 12px; padding: 6px 8px; text-align: left; }
+.empty { color: var(--muted); margin: 0; }
+
+.welcome { position: fixed; inset: 0; z-index: 80; background: radial-gradient(ellipse at 50% 30%, #fff 0%, #f3e6ec 60%, #e9d6df 100%); display: grid; place-items: center; padding: 16px; overflow-y: auto; }
+.welcome-in { width: min(720px, 100%); display: grid; gap: 18px; text-align: center; }
+.welcome h1 { font-family: var(--display); font-size: clamp(42px, 8vw, 76px); margin: 0; line-height: .95; }
+.welcome h1 i { color: var(--accent); font-weight: 500; }
+.welcome p { margin: 0; color: var(--muted); font-size: 17px; }
+.who { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.who button { border: 1px solid var(--line); border-radius: 18px; background: #fff; padding: 0 0 14px; cursor: pointer; display: grid; gap: 8px; overflow: hidden; font-size: 15px; }
+.who button:hover { border-color: var(--accent); box-shadow: 0 10px 30px rgba(194,24,91,.15); }
+.who img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; background: #ece4e8; }
+.who b { font-family: var(--display); font-size: 26px; }
+.who span { color: var(--muted); font-size: 14px; padding: 0 12px; }
+
+.runway { position: fixed; inset: 0; z-index: 60; background: #120d14; color: #fff; display: grid; grid-template-rows: 1fr auto; }
+.runway-stage { position: relative; overflow: hidden; }
+.runway-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.flash { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: #fff; box-shadow: 0 0 30px 12px rgba(255,255,255,.8); opacity: 0; animation: pop .5s ease-out forwards; pointer-events: none; }
+@keyframes pop { 0% { opacity: 1; } 100% { opacity: 0; transform: scale(2.4); } }
+.judges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px)); background: #1c1520; border-top: 1px solid #33283a; }
+.judge { background: #251c2a; border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; opacity: 0; transform: translateY(10px); transition: all .45s; }
+.judge.in { opacity: 1; transform: none; }
+.judge .who2 { font-size: 12px; color: #c9b8cf; letter-spacing: .08em; text-transform: uppercase; }
+.judge .sc { font-family: var(--display); font-size: 34px; line-height: 1; color: #ffd6e6; }
+.judge .say { font-size: 13px; color: #e8dcec; }
+.verdict { position: absolute; top: 50%; left: 16px; transform: translateY(-60%); width: min(380px, 46%); text-align: center; display: grid; gap: 4px; opacity: 0; transition: opacity .5s; padding: 12px 16px; background: rgba(18,13,20,.8); border: 1px solid #3a2e40; border-radius: 16px; pointer-events: none; }
+.verdict.in { opacity: 1; pointer-events: auto; }
+.verdict h2 { font-family: var(--display); font-size: clamp(28px, 6vw, 48px); margin: 0; }
+.verdict .stars { font-size: 24px; }
+.verdict p { margin: 0; color: #e8dcec; }
+.verdict .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 6px; }
+.verdict .pill { background: #fff; color: var(--ink); border-color: #fff; }
+.verdict .pill.ghost { background: transparent; color: #fff; border-color: #6b5874; }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 999px; z-index: 90; font-size: 14px; }
+
+@media (max-width: 1150px) {
+  .app { grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); }
+  .stylist { position: static; max-height: none; grid-column: 1; }
+  .wardrobe { grid-row: span 2; }
+}
+@media (max-width: 760px) {
+  .app { grid-template-columns: 1fr; padding: 12px; gap: 12px; }
+  .stage-wrap, .stylist { position: static; }
+  .stage { aspect-ratio: auto; height: min(64vh, 560px); }
+  .wardrobe { grid-row: auto; order: 3; }
+  .stylist { order: 2; }
+  .brand { font-size: 22px; }
+  .judges { grid-template-columns: 1fr; gap: 6px; }
+  .judge { padding: 8px 10px; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; }
+  .judge .sc { font-size: 26px; grid-row: span 2; }
+  .who b { font-size: 21px; }
+}
+@media (max-width: 760px) { .verdict { top: 8px; left: 50%; transform: translateX(-50%); width: calc(100% - 24px); padding: 8px 10px; gap: 2px; } .verdict h2 { font-size: 26px; } .verdict .stars { font-size: 17px; } .verdict p { font-size: 13px; } .verdict .row { flex-wrap: nowrap; margin-top: 2px; } .verdict .pill { padding: 6px 10px; font-size: 13px; white-space: nowrap; } }
+@media (prefers-reduced-motion: reduce) { .flash { animation: none; } .judge, .verdict { transition: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="pill" href="../" id="homeLink">← Home</a>
+  <span class="brand">Runway <i>Muse</i></span>
+  <button class="pill" id="switchBtn" type="button">Switch model</button>
+  <button class="pill" id="challengeBtn" type="button">Client briefs</button>
+  <button class="pill" id="lookbookBtn" type="button">Lookbook</button>
+  <span class="pill" title="Coins: earn them on the runway, spend them on new pieces"><i class="coin"></i><b id="coins">0</b></span>
+</header>
+
+<main class="app">
+  <section class="stage-wrap" aria-label="Your model">
+    <div class="panel brief" id="brief"></div>
+    <div class="stage" id="stage">
+      <span class="hint">Drag to turn · pinch or scroll to zoom</span>
+      <div class="score-badge"><b id="badgeScore">0</b><span>Style score</span><div class="stars" id="badgeStars"></div></div>
+      <div class="views"><button type="button" data-view="0">Front</button><button type="button" data-view="1">Side</button><button type="button" data-view="2">Back</button><button type="button" data-view="3">Face</button></div>
+    </div>
+    <div class="stage-actions">
+      <button class="pill" id="autoBtn" type="button">✨ Style me</button>
+      <button class="pill" id="saveBtn" type="button">Save look</button>
+      <button class="pill cta" id="runwayBtn" type="button">Walk the runway</button>
+    </div>
+  </section>
+  <section class="panel wardrobe" aria-label="Wardrobe">
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div id="tabBody"></div>
+  </section>
+  <aside class="panel stylist" aria-label="Stylist feedback">
+    <h3>Your stylist</h3>
+    <div class="ring-row"><svg class="ring" viewBox="0 0 84 84" id="ring"></svg><div class="areas" id="areas"></div></div>
+    <div class="palette-strip" id="strip" title="Your outfit's colours"></div>
+    <div class="harmony" id="harmony"></div>
+    <div class="notes" id="notes"></div>
+  </aside>
+</main>
+
+<div class="welcome" id="welcome">
+  <div class="welcome-in">
+    <span class="eyebrow">Fashion house · 3D studio</span>
+    <h1>Runway <i>Muse</i></h1>
+    <p>Who are you styling today? Pick a model, dress them in 3D, and your stylist will tell you what works.</p>
+    <div class="who">
+      <button type="button" data-gender="f"><img id="prevF" alt="Female model in the 3D studio"><b>Her</b><span>Dresses, skirts, heels, bags and jewellery</span></button>
+      <button type="button" data-gender="m"><img id="prevM" alt="Male model in the 3D studio"><b>Him</b><span>Shirts, suits, chinos, boots, ties and watches</span></button>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="challengeSheet" hidden>
+  <div class="sheet">
+    <div class="sheet-head"><h2>Client briefs</h2><button class="pill" data-close type="button">Close</button></div>
+    <p class="empty">Style each client for their occasion. Score 3 stars or more to unlock the next brief. Free Studio is always open.</p>
+    <div class="challenges" id="challenges"></div>
+  </div>
+</div>
+<div class="overlay" id="lookbookSheet" hidden>
+  <div class="sheet">
+    <div class="sheet-head"><h2>Lookbook</h2><button class="pill" data-close type="button">Close</button></div>
+    <div class="looks" id="looks"></div>
+  </div>
+</div>
+<div class="runway" id="runway" hidden>
+  <div class="runway-stage" id="runwayStage"><div class="verdict" id="verdict"></div></div>
+  <div class="judges" id="judges"></div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  if (!window.THREE) { document.body.innerHTML = '<p style="padding:24px">The 3D engine could not load. Check your connection and reload.</p>'; return; }
+  const V3 = THREE.Vector3;
+  if (THREE.ColorManagement) THREE.ColorManagement.legacyMode = false;
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // ---------- colour library ----------
+  const PALETTE = [
+    ['black', 'Black', '#1c1b1f', 1], ['white', 'White', '#f4f2ec', 1], ['ivory', 'Ivory', '#e8ddc6', 1], ['beige', 'Beige', '#d3b994', 1],
+    ['camel', 'Camel', '#b0804f', 1], ['chocolate', 'Chocolate', '#563726', 1], ['grey', 'Grey', '#8d8c93', 1], ['charcoal', 'Charcoal', '#3b3d42', 1], ['navy', 'Navy', '#1f2b4a', 1], ['denim', 'Denim', '#46648c', 1],
+    ['red', 'Red', '#b8102a', 0], ['burgundy', 'Burgundy', '#661829', 0], ['coral', 'Coral', '#e86e5c', 0], ['orange', 'Orange', '#dd6e28', 0], ['mustard', 'Mustard', '#c99812', 0],
+    ['yellow', 'Butter', '#efd577', 0], ['olive', 'Olive', '#66693a', 0], ['sage', 'Sage', '#96a984', 0], ['emerald', 'Emerald', '#1c7254', 0], ['teal', 'Teal', '#1b7684', 0],
+    ['sky', 'Sky', '#97c3e2', 0], ['royal', 'Cobalt', '#2541ad', 0], ['lilac', 'Lilac', '#c0a8dc', 0], ['purple', 'Plum', '#643a92', 0], ['blush', 'Blush', '#eec0c9', 0], ['fuchsia', 'Fuchsia', '#cc2669', 0],
+  ];
+  const C = {};
+  for (const [key, name, hex, neutral] of PALETTE) C[key] = { key, name, hex, neutral: !!neutral, ...hsl(hex) };
+  function hsl(hex) {
+    const n = parseInt(hex.slice(1), 16), r = (n >> 16) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+    let h = 0, s = 0;
+    if (d) { s = d / (1 - Math.abs(2 * l - 1)); h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h = (h * 60 + 360) % 360; }
+    return { h, s, l };
+  }
+  const hueGap = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
+  const warmth = c => c.neutral ? 0 : (c.h < 70 || c.h > 330) ? 1 : (c.h > 170 && c.h < 290) ? -1 : 0;   // +1 warm, -1 cool
+  const SKINS = [['#f5d9c6', 'cool', 'Porcelain'], ['#ecc3a3', 'warm', 'Light'], ['#d9a27b', 'warm', 'Tan'], ['#b97c55', 'neutral', 'Olive-brown'], ['#8c5a3c', 'warm', 'Deep'], ['#5a3826', 'cool', 'Ebony']];
+  const HAIRC = { black: ['Black', '#16110f'], espresso: ['Espresso', '#33201a'], brown: ['Brown', '#5e3b23'], auburn: ['Auburn', '#7f3519'], blonde: ['Blonde', '#c9a35a'], platinum: ['Platinum', '#e3d6b9'], grey: ['Silver', '#a9a7a3'], rose: ['Rose', '#d886a6'] };
+  const METALS = { gold: ['Gold', '#d4ad4b'], silver: ['Silver', '#c9ced3'], rose: ['Rose gold', '#dea08a'] };
+  const PATTERNS = [['solid', 'Solid', 0], ['stripes', 'Stripes', 0], ['check', 'Check', 40], ['dots', 'Polka dots', 30], ['floral', 'Floral', 60], ['leopard', 'Leopard', 80]];
+
+  // ---------- renderer / studio ----------
+  const stageEl = $('stage');
+  const canvas = document.createElement('canvas'); stageEl.prepend(canvas);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+  renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.82;
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.physicallyCorrectLights = false;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(28, 3 / 4, 0.1, 50);
+  scene.add(new THREE.HemisphereLight(0xfff4f8, 0x6d5a62, 0.3));
+  const key = new THREE.DirectionalLight(0xfff3ea, 2.1); key.position.set(2.2, 4.2, 3.2); key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048); Object.assign(key.shadow.camera, { left: -1.4, right: 1.4, top: 2.4, bottom: -0.4, near: 1, far: 12 }); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.02;
+  const rim = new THREE.DirectionalLight(0xe8eeff, 1.2); rim.position.set(-2.6, 3, -3);
+  const fill = new THREE.DirectionalLight(0xffe6ee, 0.55); fill.position.set(-3, 1.6, 2.4);
+  scene.add(key, rim, fill);
+  // a seamless photo-studio sweep
+  const sweepMat = new THREE.MeshStandardMaterial({ color: 0xece2e7, roughness: 0.95 });
+  const sweep = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 8, 64, 1, true, Math.PI * 0.8, Math.PI * 1.4), sweepMat);
+  sweep.position.set(0, 4, 0); sweep.material.side = THREE.BackSide; sweep.receiveShadow = true; scene.add(sweep);
+  const floorMat = sweepMat.clone(); floorMat.side = THREE.FrontSide;
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(6, 64), floorMat); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+  // soft-box reflections for satin, leather and metal
+  {
+    const env = new THREE.Scene();
+    env.add(new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), new THREE.MeshBasicMaterial({ color: 0x8a7f86, side: THREE.BackSide })));
+    for (const [x, y, z, w, h, c] of [[3, 3, 3, 2.5, 3.5, 0xffffff], [-4, 2.5, 1, 1.5, 4, 0xfff2f6], [0, 6, 0, 5, 5, 0xffffff], [-2, 2, -4, 3, 2, 0xdfe6ff]]) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: c, side: THREE.DoubleSide }));
+      m.position.set(x, y, z); m.lookAt(0, 1, 0); env.add(m);
+    }
+    scene.environment = new THREE.PMREMGenerator(renderer).fromScene(env, 0.04).texture;
+  }
+  const STUDIO = { studio: 0xb9b1ad, cafe: 0xe9dccb, garden: 0xdfe8d6, office: 0xdfe3e8, beach: 0xe7ecef, gala: 0x2a1820, winter: 0xe6ecf2, festival: 0xe9c8b7 };
+  const model = new THREE.Group(); scene.add(model);
+
+  // ---------- procedural textures ----------
+  function canvasTex(w, h, paint, srgb = true) {
+    const c = document.createElement('canvas'); c.width = w; c.height = h; paint(c.getContext('2d'), w, h);
+    const t = new THREE.CanvasTexture(c); if (srgb) t.encoding = THREE.sRGBEncoding;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); return t;
+  }
+  function normalFromHeight(paint, size = 256, strength = 2) {
+    const c = document.createElement('canvas'); c.width = c.height = size; const g = c.getContext('2d'); paint(g, size);
+    const src = g.getImageData(0, 0, size, size).data, out = g.createImageData(size, size), H = (x, y) => src[(((y + size) % size) * size + ((x + size) % size)) * 4] / 255;
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      const dx = (H(x + 1, y) - H(x - 1, y)) * strength, dy = (H(x, y + 1) - H(x, y - 1)) * strength, l = Math.hypot(dx, dy, 1), i = (y * size + x) * 4;
+      out.data[i] = (-dx / l * 0.5 + 0.5) * 255; out.data[i + 1] = (dy / l * 0.5 + 0.5) * 255; out.data[i + 2] = (1 / l * 0.5 + 0.5) * 255; out.data[i + 3] = 255;
+    }
+    g.putImageData(out, 0, 0);
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+  }
+  const NORMALS = {
+    weave: normalFromHeight((g, s) => { g.fillStyle = '#808080'; g.fillRect(0, 0, s, s); const n = 32, k = s / n; for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const gr = g.createRadialGradient((x + .5) * k, (y + .5) * k, 0, (x + .5) * k, (y + .5) * k, k * .7); gr.addColorStop(0, (x + y) % 2 ? '#d0d0d0' : '#b8b8b8'); gr.addColorStop(1, '#505050'); g.fillStyle = gr; g.fillRect(x * k, y * k, k, k); } }, 256, 1.6),
+    twill: normalFromHeight((g, s) => { g.fillStyle = '#707070'; g.fillRect(0, 0, s, s); g.strokeStyle = '#c8c8c8'; g.lineWidth = 3; for (let i = -s; i < s * 2; i += 8) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + s, s); g.stroke(); } for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(255,255,255,${Math.random() * .2})`; g.fillRect(Math.random() * s, Math.random() * s, 2, 1); } }, 256, 2.2),
+    knit: normalFromHeight((g, s) => { g.fillStyle = '#404040'; g.fillRect(0, 0, s, s); const n = 16, w = s / n; for (let x = 0; x < n; x++) for (let y = 0; y < n * 1.5; y++) { const cx = x * w + w / 2, cy = y * w / 1.5; g.fillStyle = '#d8d8d8'; g.beginPath(); g.ellipse(cx - w * .2, cy, w * .22, w * .4, .5, 0, 7); g.fill(); g.beginPath(); g.ellipse(cx + w * .2, cy, w * .22, w * .4, -.5, 0, 7); g.fill(); } }, 256, 3),
+    leather: normalFromHeight((g, s) => { g.fillStyle = '#808080'; g.fillRect(0, 0, s, s); for (let i = 0; i < 2600; i++) { g.fillStyle = `rgba(${Math.random() < .5 ? 0 : 255},0,0,.08)`.replace('0,0', Math.random() < .5 ? '0,0' : '255,255'); g.beginPath(); g.arc(Math.random() * s, Math.random() * s, Math.random() * 3 + .5, 0, 7); g.fill(); } }, 256, 1.2),
+    rib: normalFromHeight((g, s) => { for (let x = 0; x < s; x++) { const v = 128 + Math.sin(x / s * Math.PI * 2 * 24) * 110; g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(x, 0, 1, s); } }, 256, 2.5),
+    smooth: null,
+  };
+  const DETAIL = canvasTex(128, 128, (g, w, h) => { g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); for (let i = 0; i < 1600; i++) { g.fillStyle = `rgba(0,0,0,${Math.random() * .06})`; g.fillRect(Math.random() * w, Math.random() * h, 1, 2); } });
+  const DENIM = canvasTex(256, 256, (g, w, h) => { g.fillStyle = '#e6eaf0'; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 1.2; for (let i = -w; i < w * 2; i += 4) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + w, h); g.stroke(); } for (let i = 0; i < 2500; i++) { g.fillStyle = `rgba(255,255,255,${Math.random() * .35})`; g.fillRect(Math.random() * w, Math.random() * h, 1, 3); } });
+  const patternCache = {};
+  function patternTex(kind, colorKey) {
+    const id = kind + colorKey; if (patternCache[id]) return patternCache[id];
+    const c = C[colorKey], ink = c.l > 0.55 ? '#2a2230' : '#f4efe6', acc = c.l > 0.55 ? '#c2185b' : '#efd577';
+    return patternCache[id] = canvasTex(256, 256, (g, w, h) => {
+      g.fillStyle = c.hex; g.fillRect(0, 0, w, h);
+      if (kind === 'stripes') { g.fillStyle = ink; for (let y = 0; y < h; y += 32) g.fillRect(0, y, w, 12); }
+      if (kind === 'check') { g.globalAlpha = .35; g.fillStyle = ink; for (let x = 0; x < w; x += 64) g.fillRect(x, 0, 32, h); for (let y = 0; y < h; y += 64) g.fillRect(0, y, w, 32); g.globalAlpha = .7; g.fillRect(0, 0, w, 2); for (let x = 0; x < w; x += 64) g.fillRect(x + 48, 0, 2, h); g.globalAlpha = 1; }
+      if (kind === 'dots') { g.fillStyle = ink; for (let y = 0; y < h; y += 32) for (let x = (y / 32 % 2) * 16; x < w; x += 32) { g.beginPath(); g.arc(x + 8, y + 8, 6, 0, 7); g.fill(); } }
+      if (kind === 'floral') for (let i = 0; i < 14; i++) { const x = (i * 97) % w, y = (i * 61) % h; g.fillStyle = ink; for (let p = 0; p < 5; p++) { const a = p / 5 * 6.283; g.beginPath(); g.ellipse(x + Math.cos(a) * 9, y + Math.sin(a) * 9, 7, 4.5, a, 0, 7); g.fill(); } g.fillStyle = acc; g.beginPath(); g.arc(x, y, 4, 0, 7); g.fill(); g.strokeStyle = ink; g.globalAlpha = .5; g.beginPath(); g.arc(x + 20, y + 16, 10, 0, 1.4); g.stroke(); g.globalAlpha = 1; }
+      if (kind === 'leopard') { for (let i = 0; i < 46; i++) { const x = Math.random() * w, y = Math.random() * h, r = 6 + Math.random() * 6; g.fillStyle = '#7a4a22'; g.beginPath(); g.ellipse(x, y, r, r * .7, Math.random() * 3, 0, 7); g.fill(); g.strokeStyle = '#1f150e'; g.lineWidth = 3; g.beginPath(); g.ellipse(x, y, r + 2, r * .7 + 2, Math.random() * 3, 0.3, 5.2); g.stroke(); } }
+    });
+  }
+  // fabric presets: how each cloth reflects light
+  const FABRIC = {
+    cotton: { rough: 0.92, sheen: 0.35, normal: 'weave', nScale: 0.5, rep: 18 },
+    denim: { rough: 0.88, sheen: 0.2, normal: 'twill', nScale: 0.9, rep: 14, denim: true },
+    knit: { rough: 0.95, sheen: 0.7, normal: 'knit', nScale: 1.1, rep: 10 },
+    silk: { rough: 0.32, sheen: 1, normal: null, rep: 6, clear: 0.1 },
+    wool: { rough: 0.85, sheen: 0.5, normal: 'twill', nScale: 0.35, rep: 26 },
+    leather: { rough: 0.42, sheen: 0, normal: 'leather', nScale: 0.6, rep: 8, clear: 0.35 },
+    nylon: { rough: 0.38, sheen: 0.2, normal: null, rep: 6, clear: 0.2 },
+    jersey: { rough: 0.9, sheen: 0.55, normal: 'weave', nScale: 0.25, rep: 24 },
+    rib: { rough: 0.95, sheen: 0.6, normal: 'rib', nScale: 0.8, rep: 6 },
+  };
+  const matCache = {};
+  function fabricMat(fabric, colorKey, pattern = 'solid') {
+    const id = fabric + colorKey + pattern; if (matCache[id]) return matCache[id];
+    const F = FABRIC[fabric] || FABRIC.cotton, c = C[colorKey] || C.black;
+    const m = new THREE.MeshPhysicalMaterial({ color: pattern === 'solid' ? c.hex : 0xffffff, roughness: F.rough, metalness: 0, sheen: F.sheen, sheenRoughness: 0.6, sheenColor: new THREE.Color(c.hex).lerp(new THREE.Color(0xffffff), 0.18), side: THREE.DoubleSide, clearcoat: F.clear || 0, clearcoatRoughness: 0.4, envMapIntensity: 0.45 });
+    if (pattern !== 'solid') { m.map = patternTex(pattern, colorKey); m.map.repeat.set(F.rep * 0.35, F.rep * 0.35); }
+    else { m.map = F.denim ? DENIM : DETAIL; m.map.repeat.set(F.rep, F.rep); }
+    if (F.normal) { m.normalMap = NORMALS[F.normal]; m.normalScale = new THREE.Vector2(F.nScale, F.nScale); m.normalMap.repeat.set(F.rep, F.rep); }
+    return matCache[id] = m;
+  }
+  const solid = (hex, rough = 0.5, metal = 0, o = {}) => new THREE.MeshPhysicalMaterial(Object.assign({ color: hex, roughness: rough, metalness: metal, side: THREE.DoubleSide }, o));
+
+  // ---------- geometry: lofted surfaces ----------
+  // rows: [{y, rx, rzf, rzb, x, z}] top to bottom; u wraps around, v runs down
+  function catmull(ctrl, per = 6) {
+    const out = [], keys = Object.keys(ctrl[0]);
+    for (let i = 0; i < ctrl.length - 1; i++) {
+      const p0 = ctrl[Math.max(0, i - 1)], p1 = ctrl[i], p2 = ctrl[i + 1], p3 = ctrl[Math.min(ctrl.length - 1, i + 2)];
+      for (let s = 0; s < per; s++) {
+        const t = s / per, t2 = t * t, t3 = t2 * t, r = {};
+        for (const k of keys) r[k] = 0.5 * ((2 * p1[k]) + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3);
+        out.push(r);
+      }
+    }
+    out.push({ ...ctrl[ctrl.length - 1] });
+    return out;
+  }
+  function loft(rows, o = {}) {
+    const seg = o.seg || 48, pos = [], uv = [], idx = [];
+    let v = 0;
+    rows.forEach((r, i) => {
+      if (i) v += Math.hypot(r.y - rows[i - 1].y, (r.x || 0) - (rows[i - 1].x || 0));
+      for (let j = 0; j <= seg; j++) {
+        const a = j / seg * Math.PI * 2, s = Math.sin(a);
+        let rx = r.rx, rz = s > 0 ? r.rzf : r.rzb;
+        if (o.bulge) { const b = o.bulge(r, a); rx += b; rz += b; }
+        pos.push((r.x || 0) + Math.cos(a) * rx, r.y, (r.z || 0) + s * rz);
+        uv.push(j / seg * (o.uLen || 1), v);
+      }
+    });
+    const W = seg + 1;
+    for (let i = 0; i < rows.length - 1; i++) for (let j = 0; j < seg; j++) {
+      const mid = (j + 0.5) / seg * Math.PI * 2;
+      if (o.gap && Math.abs(Math.atan2(Math.sin(mid - Math.PI / 2), Math.cos(mid - Math.PI / 2))) < o.gap(rows[i], i)) continue;   // open front
+      const a = i * W + j, b = a + 1, c = a + W, d = c + 1;
+      idx.push(a, b, c, b, d, c);   // wound so normals face outward
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx); g.computeVertexNormals();
+    return g;
+  }
+  // gentle fabric folds: displace along the normal with layered waves, more where the cloth bunches
+  function folds(g, amp = 0.004, freq = 38, seed = 0, bunch = null) {
+    const p = g.attributes.position, n = g.attributes.normal;
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+      const ang = Math.atan2(z, x);
+      let d = Math.sin(ang * 9 + y * 6 + seed) * 0.6 + Math.sin(ang * 17 - y * 11 + seed * 2) * 0.3 + Math.sin(y * freq + ang * 3 + seed) * 0.35;
+      d = (d + 1.25) * 0.5;
+      if (bunch) d *= 1 + bunch(y);
+      p.setXYZ(i, x + n.getX(i) * d * amp, y + n.getY(i) * d * amp * 0.3, z + n.getZ(i) * d * amp);
+    }
+    g.computeVertexNormals(); return g;
+  }
+  const add = (parent, geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; };
+
+  // ---------- bodies ----------
+  // control rings in metres; y is height above the floor
+  const BODY = {
+    f: {
+      torso: [[1.455, .052, .05, .05], [1.435, .09, .058, .062], [1.405, .135, .068, .07], [1.375, .162, .08, .078], [1.335, .168, .095, .088], [1.29, .158, .115, .092], [1.235, .152, .128, .094], [1.17, .132, .1, .09], [1.08, .122, .085, .092], [1.0, .15, .095, .118], [0.93, .172, .105, .132], [0.86, .158, .095, .118], [0.82, .13, .08, .095]],
+      neck: [[1.56, .043, .045, .045], [1.455, .05, .05, .05]],
+      leg: { x: .082, rows: [[0.9, .088], [0.8, .083], [0.66, .068], [0.52, .05], [0.46, .051], [0.36, .056], [0.24, .042], [0.12, .03], [0.07, .031]] },
+      arm: { top: 1.37, x: .175, rows: [[0, .05], [-0.08, .045], [-0.26, .036], [-0.3, .034], [-0.42, .034], [-0.53, .025]], spread: 0.12 },
+      head: { y: 1.675, r: [.1, .13, .11] }, shoulderY: 1.37, waistY: 1.08, hipY: 0.93, crotch: 0.82, height: 1.74,
+    },
+    m: {
+      torso: [[1.51, .062, .06, .06], [1.49, .11, .068, .07], [1.46, .16, .08, .08], [1.425, .198, .092, .09], [1.38, .208, .105, .097], [1.33, .195, .125, .1], [1.25, .18, .118, .1], [1.16, .162, .108, .1], [1.07, .155, .105, .102], [0.99, .163, .102, .118], [0.92, .17, .1, .122], [0.86, .158, .095, .112], [0.82, .135, .085, .095]],
+      neck: [[1.62, .055, .057, .055], [1.51, .062, .06, .06]],
+      leg: { x: .092, rows: [[0.9, .09], [0.8, .087], [0.66, .072], [0.52, .054], [0.46, .055], [0.36, .061], [0.24, .046], [0.12, .033], [0.07, .034]] },
+      arm: { top: 1.42, x: .215, rows: [[0, .06], [-0.08, .057], [-0.28, .044], [-0.32, .041], [-0.45, .041], [-0.57, .029]], spread: 0.1 },
+      head: { y: 1.74, r: [.1, .13, .112] }, shoulderY: 1.42, waistY: 1.07, hipY: 0.92, crotch: 0.82, height: 1.82,
+    },
+  };
+  let gender = 'f', B = BODY.f, torsoDense = null;
+  function setGenderBody(gd) {
+    gender = gd; B = BODY[gd];
+    torsoDense = catmull(B.torso.map(([y, rx, rzf, rzb]) => ({ y, rx, rzf, rzb, x: 0, z: 0 })), 8);
+  }
+  function bodyAt(y) {
+    const t = torsoDense;
+    if (y >= t[0].y) return t[0];
+    for (let i = 0; i < t.length - 1; i++) if (y <= t[i].y && y >= t[i + 1].y) { const k = (t[i].y - y) / (t[i].y - t[i + 1].y); return { y, rx: lerp(t[i].rx, t[i + 1].rx, k), rzf: lerp(t[i].rzf, t[i + 1].rzf, k), rzb: lerp(t[i].rzb, t[i + 1].rzb, k), x: 0, z: 0 }; }
+    return { ...t[t.length - 1], y };
+  }
+  const legRows = (side, ease = 0, y0 = 0.9, y1 = 0.07, flare = 0) => catmull(B.leg.rows.map(([y, r]) => ({ y, rx: r + ease, rzf: r * 0.95 + ease, rzb: r * 1.02 + ease, x: side * (B.leg.x - (0.9 - y) * 0.012), z: (y > 0.5 ? 0 : 0.004) })), 5)
+    .filter(r => r.y <= y0 + 1e-6 && r.y >= y1 - 1e-6).map(r => flare ? { ...r, rx: Math.max(r.rx, r.rx + (0.9 - r.y) * flare), rzf: Math.max(r.rzf, r.rzf + (0.9 - r.y) * flare * 0.9), rzb: Math.max(r.rzb, r.rzb + (0.9 - r.y) * flare * 0.9) } : r);
+  const legOuter = y => { const r = legRows(1).reduce((a, b) => Math.abs(b.y - y) < Math.abs(a.y - y) ? b : a); return r.x + r.rx; };
+  const armRows = (side, ease = 0, from = 0, to = -0.53) => catmull(B.arm.rows.map(([dy, r]) => ({ y: B.arm.top + dy, rx: r + ease, rzf: r * 1.05 + ease, rzb: r * 1.05 + ease, x: side * (B.arm.x - dy * B.arm.spread), z: dy * -0.03 })), 5).filter(r => r.y - B.arm.top <= from + 1e-6 && r.y - B.arm.top >= to - 1e-6);
+  // a torso-hugging shell; drape keeps loose cloth from following the waist in
+  function shell(yTop, yBot, o = {}) {
+    const ease = (o.ease ?? 0.01) + layerBoost, n = Math.max(6, Math.round((yTop - yBot) / 0.012)), rows = [];
+    let prev = null;
+    for (let i = 0; i <= n; i++) {
+      const y = lerp(yTop, yBot, i / n), b = bodyAt(y);
+      let rx = b.rx + ease, rzf = b.rzf + ease, rzb = b.rzb + ease;
+      if (layerBoost && underFlare) { const from = underFlare[1] === 'waist' ? B.waistY : underFlare[1] === 'hip5' ? B.hipY + 0.05 : underFlare[1] === 'hip2' ? B.hipY + 0.02 : B.hipY; if (y < from) { const e = (from - y) * underFlare[0] * 1.05; rx += e; rzf += e * 0.85; rzb += e * 0.9; } }
+      if (o.flare && y < (o.flareFrom ?? B.hipY)) { const e = ((o.flareFrom ?? B.hipY) - y) * o.flare; rx += e; rzf += e * 0.85; rzb += e * 0.9; }
+      if (o.top && y < B.waistY + 0.06) { const k = clamp((B.waistY + 0.06 - y) / 0.06, 0, 1) * 0.018; rx += k; rzf += k; rzb += k; }
+      if (y < B.crotch + 0.03) { const lo = legOuter(y) + ease * 1.2; rx = Math.max(rx, lo); rzf = Math.max(rzf, 0.105 + ease); rzb = Math.max(rzb, 0.11 + ease); }
+      if (prev && o.drape != null) { rzf = Math.max(rzf, prev.rzf - o.drape * (prev.y - y)); rx = Math.max(rx, prev.rx - o.drape * 1.4 * (prev.y - y)); }
+      const r = { y, rx, rzf, rzb, x: 0, z: 0 };
+      rows.push(r); prev = r;
+    }
+    if (o.neck) { rows[0].rx = Math.max(rows[0].rx * 0.92, o.neck); }
+    return rows;
+  }
+
+  // ---------- skin & body build ----------
+  let layerBoost = 0, underFlare = null;
+  const irisCache = {};
+  function irisMat(o) {
+    const key = o.gender === 'm' ? 'm' : 'f'; if (irisCache[key]) return irisCache[key];
+    const tex = canvasTex(8, 256, (g, w, h) => {
+      const gr = g.createLinearGradient(0, 0, 0, h);
+      gr.addColorStop(0, '#060403'); gr.addColorStop(0.36, '#060403'); gr.addColorStop(0.4, '#2b170c');
+      gr.addColorStop(0.62, key === 'm' ? '#5a3a22' : '#6b4226'); gr.addColorStop(0.82, '#3a2414'); gr.addColorStop(0.9, '#120a06'); gr.addColorStop(1, '#f2ede8');
+      g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    });
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    return irisCache[key] = solid(0xffffff, 0.15, 0, { map: tex, clearcoat: 1, clearcoatRoughness: 0.05 });
+  }
+  let skinIdx = 2, hairStyle = 'long', hairColor = 'espresso';
+  function buildBody(o) {
+    const g = new THREE.Group(), skin = solid(SKINS[o.skin][0], 0.5, 0, { sheen: 0.45, sheenColor: new THREE.Color(0xffd6c4), sheenRoughness: 0.5, clearcoat: 0.08, clearcoatRoughness: 0.5, emissive: new THREE.Color(SKINS[o.skin][0]).multiplyScalar(0.07) });
+    add(g, loft(torsoDense), skin);
+    add(g, loft(catmull(B.neck.map(([y, rx, rzf, rzb]) => ({ y, rx, rzf, rzb, x: 0, z: 0 })), 4)), skin);
+    for (const s of [-1, 1]) {
+      add(g, loft(legRows(s)), skin);
+      add(g, loft(armRows(s)), skin);
+      // hand and foot
+      const wrist = armRows(s).slice(-1)[0];
+      const hx = wrist.x + s * 0.004, hy = wrist.y - 0.045, hz = wrist.z;
+      add(g, new THREE.SphereGeometry(1, 20, 14), skin, hx, hy, hz).scale.set(0.02, 0.042, 0.036);
+      [[-0.022, 0.04], [-0.008, 0.046], [0.006, 0.044], [0.019, 0.036]].forEach(([dz, len]) => { const f = add(g, new THREE.CapsuleGeometry(0.0068, len, 4, 10), skin, hx - s * 0.002, hy - 0.03 - len / 2, hz + dz); f.rotation.x = dz * 0.6; f.rotation.z = s * 0.06; });
+      const th = add(g, new THREE.CapsuleGeometry(0.0075, 0.03, 4, 10), skin, hx + s * 0.006, hy - 0.02, hz + 0.034); th.rotation.x = 0.5; th.rotation.z = -s * 0.25;
+      const foot = add(g, new THREE.SphereGeometry(1, 24, 14), skin, s * (B.leg.x - 0.01), 0.035, 0.045);
+      foot.scale.set(0.038, 0.032, 0.11);
+    }
+    // head: sculpted, mannequin-smooth, with a hint of features
+    const H = B.head, head = new THREE.Group(); head.position.set(0, H.y, 0.01); g.add(head);
+    // animated-film head: round cheeks, soft small chin, big expressive eyes, a smile and a blush
+    const hg = new THREE.SphereGeometry(1, 56, 42), hp = hg.attributes.position, cols = [];
+    const blush = new THREE.Color(1, 0.8, 0.78), plain = new THREE.Color(1, 1, 1);
+    for (let i = 0; i < hp.count; i++) {
+      let x = hp.getX(i), y = hp.getY(i), z = hp.getZ(i);
+      if (y < 0) { const k = -y; x *= 1 - k * k * (gender === 'm' ? 0.2 : 0.3); z *= 1 - k * k * 0.1; if (z > 0) z += k * k * 0.08 * z; }
+      if (z > 0.3 && y > -0.5 && y < 0.05) { const c = Math.exp(-(((Math.abs(x) - 0.5) / 0.22) ** 2) - (((y + 0.25) / 0.2) ** 2)); z += c * 0.05; x += Math.sign(x) * c * 0.03; }   // cheeks
+      hp.setXYZ(i, x * H.r[0], y * H.r[1], z * H.r[2]);
+      const bl = z > 0 ? Math.exp(-(((Math.abs(x) - 0.55) / 0.2) ** 2) - (((y + 0.22) / 0.16) ** 2)) * (gender === 'f' ? 0.9 : 0.4) : 0;
+      const c = plain.clone().lerp(blush, bl); cols.push(c.r, c.g, c.b);
+    }
+    hg.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3)); hg.computeVertexNormals();
+    const faceSkin = skin.clone(); faceSkin.vertexColors = true; add(head, hg, faceSkin);
+    const front = (x, y) => H.r[2] * Math.sqrt(Math.max(0, 1 - (x / H.r[0]) ** 2 - (y / H.r[1]) ** 2));
+    const onFace = (x, y, out = 0) => new V3(x, y, front(x, y) + out);
+    add(head, new THREE.SphereGeometry(1, 24, 16), skin, 0, -0.03, front(0, -0.03) - 0.004).scale.set(0.013, 0.012, 0.012);   // button nose
+    add(head, new THREE.SphereGeometry(1, 16, 12), skin, 0, -0.012, front(0, -0.012) - 0.006).scale.set(0.007, 0.02, 0.008);   // bridge
+    const hairCol = HAIRC[o.hair.color][1], lashM = solid(0x15100e, 0.6);
+    const ER = gender === 'f' ? 0.0175 : 0.0155;
+    for (const s of [-1, 1]) {
+      const ear = add(head, new THREE.SphereGeometry(1, 14, 10), skin, s * H.r[0] * 0.97, -0.01, -0.008); ear.scale.set(0.011, 0.028, 0.018);
+      const ex = s * 0.037, ey = 0.004, ez = front(ex, ey) - ER * 0.45;
+      const white = add(head, new THREE.SphereGeometry(ER, 28, 20), solid(0xf7f3ee, 0.2, 0, { clearcoat: 1, clearcoatRoughness: 0.05 }), ex, ey, ez); white.scale.set(1, 1.08, 0.7);
+      const iris = add(head, new THREE.SphereGeometry(ER * 1.005, 32, 10, 0, Math.PI * 2, 0, 0.72), irisMat(o), ex, ey, ez); iris.scale.set(1, 1.08, 0.7); iris.rotation.x = Math.PI / 2;
+      const shine = new THREE.Mesh(new THREE.CircleGeometry(ER * 0.17, 16), new THREE.MeshBasicMaterial({ color: 0xffffff })); shine.position.set(ex - 0.0045, ey + 0.0055, ez + ER * 0.7 + 0.0007); head.add(shine);
+      // upper lash line hugging the top of the eye, flicked out for her
+      const lash = []; for (let i = 0; i <= 14; i++) { const t = Math.PI * (0.05 + 0.9 * i / 14); lash.push(new V3(ex - s * Math.cos(t) * ER * 0.97, ey + Math.sin(t) * ER * 1.08 * 0.93, ez + ER * (0.17 + 0.1 * Math.sin(t)) + 0.0008)); }
+      if (gender === 'f') { const last = lash[lash.length - 1]; lash.push(new V3(last.x + s * 0.005, last.y + 0.0035, last.z - 0.002)); }
+      add(head, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(lash), 30, gender === 'f' ? 0.0016 : 0.0011, 6), lashM);
+      // arched brow
+      const bw = gender === 'm' ? 0.0034 : 0.0026, brow = [];
+      for (let i = 0; i <= 10; i++) { const t = i / 10, bx = s * (0.016 + t * 0.042), by = 0.036 + Math.sin(t * Math.PI * 0.85) * (gender === 'f' ? 0.009 : 0.005) - t * 0.004; brow.push(onFace(bx, by, 0.0012)); }
+      add(head, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(brow), 24, bw, 6), solid(hairCol, 0.7));
+    }
+    // smile
+    const lipC = shadeHex(SKINS[o.skin][0], gender === 'f' ? 0.72 : 0.84), lipM = solid(lipC, 0.35, 0, { clearcoat: gender === 'f' ? .5 : 0 });
+    const smile = []; for (let i = 0; i <= 12; i++) { const t = i / 12 * 2 - 1; smile.push(onFace(t * 0.021, -0.066 - (1 - t * t) * 0.006 + Math.abs(t) ** 3 * 0.002, 0.0005)); }
+    add(head, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(smile), 24, 0.0019, 6), solid(shadeHex(lipC, 0.55), 0.6));
+    const lower = add(head, new THREE.SphereGeometry(1, 24, 10), lipM, 0, -0.077, front(0, -0.077) - 0.003); lower.scale.set(0.014, 0.0055, 0.007);
+    buildHair(head, o);
+    return g;
+  }
+  const shadeHex = (hex, k) => { const n = parseInt(hex.slice(1), 16); const f = c => clamp(Math.round(c * k), 0, 255); return '#' + [n >> 16, n >> 8 & 255, n & 255].map(f).map(v => v.toString(16).padStart(2, '0')).join(''); };
+  function buildHair(head, o) {
+    const H = B.head, hm = solid(HAIRC[o.hair.color][1], 0.45, 0, { sheen: 1, sheenColor: new THREE.Color(HAIRC[o.hair.color][1]).lerp(new THREE.Color(0xffffff), 0.4), sheenRoughness: 0.35 });
+    const cap = (sx = 1.06, sy = 1.04, sz = 1.07, y = 0.012, thetaLen = Math.PI * 0.5, tilt = 0.5) => { const m = add(head, new THREE.SphereGeometry(1, 40, 24, 0, Math.PI * 2, 0, thetaLen), hm, 0, y, -0.006); m.scale.set(H.r[0] * sx, H.r[1] * sy, H.r[2] * sz); m.rotation.x = -tilt; return m; };
+    const st = o.hair.style;
+    if (st === 'bald') return;
+    if (st === 'buzz') { cap(1.02, 1.01, 1.03, 0.006, Math.PI * 0.5, 0.55); return; }
+    if (st === 'crop' || st === 'part') {
+      const c = cap(1.08, st === 'part' ? 1.16 : 1.11, 1.08, 0.008, Math.PI * 0.5, 0.55); if (st === 'part') c.rotation.z = -0.08;
+      return;
+    }
+    if (st === 'curls') {
+      cap(1.06, 1.04, 1.07);
+      for (let i = 0; i < 70; i++) { const u = Math.random() * Math.PI * 2, v = Math.random() * (o.hat ? 0.45 : 1.2) - 0.1, r = H.r[0] * (st === 'curls' && gender === 'f' ? 1.35 : 1.1); const s = add(head, new THREE.SphereGeometry(gender === 'f' ? 0.032 : 0.022, 10, 8), hm, Math.cos(u) * Math.cos(v) * r, 0.02 + Math.sin(v) * H.r[1] * (gender === 'f' ? 1.2 : 1), Math.sin(u) * Math.cos(v) * r * 1.05 - 0.01); s.castShadow = false; }
+      return;
+    }
+    cap();
+    const kx = H.r[0] / 0.085, ky = H.r[1] / 0.112, strands = (r, a) => Math.abs(Math.sin(a * 46)) * 0.0022;
+    if (st === 'long') {
+      const rows = catmull([[0.05, .1, .104, .112], [-0.02, .108, .02, .118], [-0.12, .112, .015, .11], [-0.25, .13, .01, .09], [-0.36, .135, .01, .07]].map(([y, rx, rzf, rzb]) => ({ y: y * ky, rx: rx * kx, rzf: rzf * kx, rzb: rzb * kx, x: 0, z: -0.01 })), 5);
+      folds(add(head, loft(rows, { seg: 96, gap: () => 0.95, bulge: strands }), hm).geometry, 0.004, 60, 2);
+    }
+    if (st === 'bob') {
+      const rows = catmull([[0.06, .1, .106, .112], [-0.02, .114, .03, .124], [-0.075, .12, .03, .124], [-0.1, .118, .03, .116], [-0.108, .104, .025, .1]].map(([y, rx, rzf, rzb]) => ({ y: y * ky, rx: rx * kx, rzf: rzf * kx, rzb: rzb * kx, x: 0, z: -0.008 })), 5);
+      add(head, loft(rows, { seg: 96, gap: () => 0.9, bulge: strands }), hm);
+      const fr = add(head, new THREE.SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.32), hm, -0.012, 0.03, 0.01); fr.scale.set(H.r[0] * 1.02, H.r[1] * 1.0, H.r[2] * 1.06); fr.rotation.set(0.55, 0, 0.35);   // side-swept fringe
+    }
+    if (st === 'bun') { add(head, new THREE.SphereGeometry(0.045, 24, 18), hm, 0, 0.13, -0.045); }
+    if (st === 'pony') { const t = add(head, new THREE.CylinderGeometry(0.028, 0.012, 0.3, 16), hm, 0, -0.06, -0.11); t.rotation.x = 0.25; add(head, new THREE.SphereGeometry(0.03, 16, 12), hm, 0, 0.07, -0.1); }
+    if (st === 'manbun') { add(head, new THREE.SphereGeometry(0.035, 20, 16), hm, 0, 0.09, -0.07); }
+  }
+
+  // ---------- garments ----------
+  // each item: { id, name, f (formality 0..4), fabric, cost?, build(group, sel) }
+  const sel2mat = (sel, fabric) => fabricMat(fabric, sel.color, sel.pattern || 'solid');
+  const trim = (sel, fabric, k = 0.82) => solid(shadeHex(C[sel.color].hex, k), FABRIC[fabric] ? FABRIC[fabric].rough : 0.8);
+  function sleeves(g, mat, len, ease = 0.012, cuff = 0) {
+    for (const s of [-1, 1]) {
+      const rows = armRows(s, ease + layerBoost * 0.6, 0.02, -len);
+      if (cuff) { const last = rows[rows.length - 1]; rows.push({ ...last, y: last.y - 0.001, rx: last.rx + cuff, rzf: last.rzf + cuff, rzb: last.rzb + cuff }); }
+      // shoulder cap so the sleeve meets the body smoothly
+      rows.unshift({ ...rows[0], y: rows[0].y + 0.025, rx: rows[0].rx * 0.8, x: rows[0].x - s * 0.02 });
+      folds(add(g, loft(rows, { seg: 28 }), mat).geometry, 0.0025, 70, s * 3, y => y < B.arm.top - 0.25 && y > B.arm.top - 0.33 ? 1.5 : 0);
+    }
+  }
+  function trousers(g, mat, o = {}) {
+    const top = o.top ?? B.waistY, ease = o.ease ?? 0.012;
+    add(g, loft(shell(top, B.crotch - 0.02, { ease: ease * 0.9 })), mat);
+    for (const s of [-1, 1]) {
+      const rows = legRows(s, ease, 0.9, o.bottom ?? 0.075, o.flare || 0);
+      folds(add(g, loft(rows, { seg: 32 }), mat).geometry, o.wrinkle ?? 0.003, 50, s * 5, y => y < 0.2 ? 1.4 : y > 0.44 && y < 0.56 ? 1 : 0);
+    }
+    add(g, loft(shell(top + 0.004, top - 0.03, { ease: ease + 0.004 })), o.bandMat || mat);   // waistband
+  }
+  function collar(g, mat, y, open = 0.6) {
+    const b = bodyAt(y), pts = [];
+    for (const s of [-1, 1]) {
+      const shape = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(0.06, -0.01), new THREE.Vector2(0.075, -0.05), new THREE.Vector2(0.01, -0.03)]);
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.003, bevelEnabled: false });
+      const m = add(g, geo, mat, s * 0.012, y + 0.03, (gender === 'm' ? B.neck[1][2] : 0.05) + 0.012);
+      m.scale.x = s; m.rotation.set(-0.5, s * 0.5, 0);
+    }
+  }
+  function buttons(g, yTop, yBot, n, z, mat) { for (let i = 0; i < n; i++) { const y = lerp(yTop, yBot, i / (n - 1)); const b = bodyAt(y); add(g, new THREE.CylinderGeometry(0.0055, 0.0055, 0.003, 14), mat, 0, y, b.rzf + z).rotation.x = Math.PI / 2; } }
+  function straps(g, mat, yFront) {
+    for (const s of [-1, 1]) {
+      const b = bodyAt(yFront);
+      const curve = new THREE.CatmullRomCurve3([new V3(s * 0.07, yFront, b.rzf * 0.8), new V3(s * 0.09, B.shoulderY + 0.02, 0.03), new V3(s * 0.08, B.shoulderY - 0.02, -0.07), new V3(s * 0.07, yFront - 0.02, -bodyAt(yFront).rzb * 0.9)]);
+      add(g, new THREE.TubeGeometry(curve, 24, 0.004, 6), mat);
+    }
+  }
+  function lapels(g, mat, yTop, yBot) {
+    for (const s of [-1, 1]) {
+      const b1 = bodyAt(yTop), b2 = bodyAt(yBot);
+      const geo = new THREE.BufferGeometry().setFromPoints([new V3(s * 0.05, yTop, b1.rzf + 0.02), new V3(s * 0.12, yTop - 0.06, b1.rzf + 0.018), new V3(s * 0.025, yBot, b2.rzf + 0.026)]);
+      geo.setIndex([0, 1, 2]); geo.computeVertexNormals();
+      add(g, geo, mat);
+    }
+  }
+  const sleeveLen = { short: 0.17, elbow: 0.3, long: B => (B === BODY.m ? 0.58 : 0.54) };
+  const FT = {
+    // ---- tops ----
+    tee: { name: 'Classic tee', f: 1, fabric: 'jersey', build(g, s) { const m = sel2mat(s, 'jersey'); folds(add(g, loft(shell(B.shoulderY + 0.06, gender === 'f' ? 0.98 : 0.9, { top: true, ease: 0.016, drape: 0.25, neck: gender === 'f' ? 0.075 : 0.085 })), m).geometry, 0.003); sleeves(g, m, 0.19, 0.018); } },
+    blouse: { name: 'Silk blouse', f: 2, fabric: 'silk', build(g, s) { const m = sel2mat(s, 'silk'); folds(add(g, loft(shell(B.shoulderY + 0.055, 0.98, { top: true, ease: 0.02, drape: 0.15, neck: 0.075 }), { gap: r => r.y > 1.3 ? 0.18 : 0 }), m).geometry, 0.004); sleeves(g, m, sleeveLen.long(B), 0.026, 0.006); } },
+    crop: { name: 'Crop top', f: 1, fabric: 'rib', build(g, s) { const m = sel2mat(s, 'rib'); add(g, loft(shell(1.31, 1.15, { ease: 0.006 })), m); straps(g, m, 1.31); } },
+    turtle: { name: 'Turtleneck', f: 2, fabric: 'knit', build(g, s) { const m = sel2mat(s, 'knit'); folds(add(g, loft(shell(B.shoulderY + 0.07, gender === 'f' ? 0.97 : 0.88, { top: true, ease: 0.016, drape: 0.3 })), m).geometry, 0.003); add(g, loft(catmull(B.neck.map(([y, rx, rzf, rzb]) => ({ y, rx: rx + 0.012, rzf: rzf + 0.012, rzb: rzb + 0.012, x: 0, z: 0 })), 4)), m); sleeves(g, m, sleeveLen.long(B), 0.016, 0.004); } },
+    cami: { name: 'Silk camisole', f: 2, fabric: 'silk', cost: 40, build(g, s) { const m = sel2mat(s, 'silk'); folds(add(g, loft(shell(1.29, 1.0, { top: true, ease: 0.01, drape: 0.2 })), m).geometry, 0.004); straps(g, m, 1.29); } },
+    shirt: { name: 'Oxford shirt', f: 3, fabric: 'cotton', build(g, s) { const m = sel2mat(s, 'cotton'); folds(add(g, loft(shell(B.shoulderY + 0.07, 0.86, { top: true, ease: 0.018, drape: 0.3, neck: 0.07 })), m).geometry, 0.0035); sleeves(g, m, sleeveLen.long(B), 0.016, 0.004); collar(g, m, B.shoulderY + 0.055); buttons(g, B.shoulderY - 0.01, 0.92, 7, 0.021, solid(0xf2efe8, 0.3)); } },
+    polo: { name: 'Polo', f: 2, fabric: 'jersey', build(g, s) { const m = sel2mat(s, 'jersey'); folds(add(g, loft(shell(B.shoulderY + 0.065, 0.88, { top: true, ease: 0.018, drape: 0.3, neck: 0.075 })), m).geometry, 0.003); sleeves(g, m, 0.2, 0.02); collar(g, m, B.shoulderY + 0.05); buttons(g, B.shoulderY + 0.02, B.shoulderY - 0.06, 3, 0.02, solid(0xf2efe8, 0.3)); } },
+    sweater: { name: 'Crew sweater', f: 2, fabric: 'knit', build(g, s) { const m = sel2mat(s, 'knit'); folds(add(g, loft(shell(B.shoulderY + 0.07, gender === 'f' ? 0.96 : 0.88, { top: true, ease: 0.022, drape: 0.3, neck: 0.08 })), m).geometry, 0.004); sleeves(g, m, sleeveLen.long(B), 0.02, 0.003); add(g, loft(shell(gender === 'f' ? 0.98 : 0.9, gender === 'f' ? 0.955 : 0.875, { ease: 0.02 })), sel2mat(s, 'rib')); } },
+    // ---- bottoms ----
+    jeans: { name: 'Straight jeans', f: 1, fabric: 'denim', build(g, s) { trousers(g, sel2mat(s, 'denim'), { ease: 0.012 }); } },
+    trousers: { name: 'Wide trousers', f: 2, fabric: 'wool', build(g, s) { trousers(g, sel2mat(s, 'wool'), { ease: 0.02, flare: 0.07, wrinkle: 0.004 }); } },
+    chinos: { name: 'Chinos', f: 2, fabric: 'cotton', build(g, s) { trousers(g, sel2mat(s, 'cotton'), { ease: 0.014 }); } },
+    suitpants: { name: 'Suit trousers', f: 3, fabric: 'wool', build(g, s) { trousers(g, sel2mat(s, 'wool'), { ease: 0.016, flare: 0.012, wrinkle: 0.002 }); } },
+    shorts: { name: 'Shorts', f: 0, fabric: 'cotton', build(g, s) { const fab = s.color === 'denim' ? 'denim' : 'cotton'; trousers(g, sel2mat(s, fab), { ease: 0.02, bottom: gender === 'f' ? 0.72 : 0.6, flare: 0.08 }); } },
+    pencil: { name: 'Pencil skirt', f: 3, fabric: 'wool', build(g, s) { add(g, loft(shell(B.waistY, 0.5, { ease: 0.008 })), sel2mat(s, 'wool')); } },
+    midi: { name: 'A-line midi', f: 2, fabric: 'silk', flare: [0.36, 'hip5'], build(g, s) { folds(add(g, loft(shell(B.waistY, 0.32, { ease: 0.01, flare: 0.36, flareFrom: B.hipY + 0.05 }), { seg: 64 }), sel2mat(s, 'silk')).geometry, 0.012, 20, 1); } },
+    pleat: { name: 'Pleated mini', f: 1, fabric: 'wool', cost: 50, flare: [0.3, 'hip'], build(g, s) { add(g, loft(shell(B.waistY, 0.7, { ease: 0.01, flare: 0.3, flareFrom: B.hipY }), { seg: 96, bulge: (r, a) => Math.abs(Math.sin(a * 24)) * 0.006 * clamp((B.hipY + 0.05 - r.y) * 8, 0, 1) }), sel2mat(s, 'wool')); } },
+    // ---- dresses ----
+    slip: { name: 'Slip dress', f: 3, fabric: 'silk', build(g, s) { const m = sel2mat(s, 'silk'); folds(add(g, loft(shell(1.29, 0.52, { ease: 0.012, drape: 0.25, flare: 0.08 }), { seg: 56 }), m).geometry, 0.006, 24, 2); straps(g, m, 1.29); } },
+    sundress: { name: 'Sundress', f: 2, fabric: 'cotton', flare: [0.42, 'waist'], build(g, s) { const m = sel2mat(s, 'cotton'); folds(add(g, loft(shell(B.shoulderY + 0.05, 0.42, { ease: 0.012, drape: 0.25, flare: 0.42, flareFrom: B.waistY, neck: 0.085 }), { seg: 72 }), m).geometry, 0.01, 18, 3); sleeves(g, m, 0.13, 0.024); } },
+    wrap: { name: 'Wrap dress', f: 2, fabric: 'jersey', flare: [0.22, 'waist'], cost: 60, build(g, s) { const m = sel2mat(s, 'jersey'); folds(add(g, loft(shell(B.shoulderY + 0.05, 0.5, { ease: 0.012, drape: 0.25, flare: 0.22, flareFrom: B.waistY }), { seg: 64, gap: r => r.y > 1.22 ? 0.25 * (r.y - 1.22) / 0.2 : 0 }), m).geometry, 0.008, 20, 4); sleeves(g, m, 0.5, 0.016); add(g, new THREE.TorusGeometry(0.02, 0.008, 8, 16), m, 0.1, B.waistY, bodyAt(B.waistY).rzf + 0.02); } },
+    bodycon: { name: 'Bodycon mini', f: 3, fabric: 'jersey', cost: 70, build(g, s) { const m = sel2mat(s, 'jersey'); add(g, loft(shell(1.3, 0.72, { ease: 0.004 })), m); straps(g, m, 1.3); } },
+    gown: { name: 'Evening gown', f: 4, fabric: 'silk', flare: [0.3, 'hip2'], cost: 150, build(g, s) { const m = sel2mat(s, 'silk'); folds(add(g, loft(shell(1.29, 0.005, { ease: 0.008, flare: 0.3, flareFrom: B.hipY + 0.02 }), { seg: 96 }), m).geometry, 0.014, 14, 5, y => y < 0.4 ? 0.8 : 0); } },
+    // ---- outerwear ----
+    blazer: { name: 'Blazer', f: 3, fabric: 'wool', build(g, s) { const m = sel2mat(s, 'wool'); add(g, loft(shell(B.shoulderY + 0.07, gender === 'f' ? 0.9 : 0.84, { ease: 0.032, drape: 0.5, neck: 0.09 }), { gap: r => r.y > B.waistY ? 0.32 : 0.12 }), m); sleeves(g, m, sleeveLen.long(B) - 0.02, 0.03); lapels(g, trim(s, 'wool', 0.85), B.shoulderY + 0.05, B.waistY + 0.02); buttons(g, B.waistY + 0.01, B.waistY - 0.03, 2, 0.04, solid(0x1a1a1a, 0.3)); } },
+    trench: { name: 'Trench coat', f: 2, fabric: 'cotton', cost: 90, build(g, s) { const m = sel2mat(s, 'cotton'); folds(add(g, loft(shell(B.shoulderY + 0.07, 0.48, { ease: 0.035, drape: 0.6, flare: 0.1, neck: 0.09 }), { gap: r => r.y > B.waistY + 0.05 ? 0.3 : 0.1 }), m).geometry, 0.006, 24, 6); sleeves(g, m, sleeveLen.long(B) - 0.01, 0.032); lapels(g, m, B.shoulderY + 0.05, B.waistY + 0.06); add(g, loft(shell(B.waistY + 0.02, B.waistY - 0.02, { ease: 0.045 })), trim(s, 'cotton', 0.9)); } },
+    denimjkt: { name: 'Denim jacket', f: 1, fabric: 'denim', build(g, s) { const m = sel2mat(s, 'denim'); add(g, loft(shell(B.shoulderY + 0.07, gender === 'f' ? 1.02 : 0.95, { ease: 0.03, drape: 0.4, neck: 0.09 }), { gap: () => 0.22 }), m); sleeves(g, m, sleeveLen.long(B) - 0.02, 0.026, 0.004); collar(g, m, B.shoulderY + 0.06); } },
+    overcoat: { name: 'Overcoat', f: 3, fabric: 'wool', cost: 120, build(g, s) { const m = sel2mat(s, 'wool'); folds(add(g, loft(shell(B.shoulderY + 0.07, 0.5, { ease: 0.04, drape: 0.7, flare: 0.04, neck: 0.095 }), { gap: r => r.y > B.waistY ? 0.3 : 0.08 }), m).geometry, 0.004, 24, 7); sleeves(g, m, sleeveLen.long(B), 0.036); lapels(g, trim(s, 'wool', 0.85), B.shoulderY + 0.05, B.waistY + 0.04); } },
+    bomber: { name: 'Bomber', f: 1, fabric: 'nylon', build(g, s) { const m = sel2mat(s, 'nylon'); folds(add(g, loft(shell(B.shoulderY + 0.07, 0.92, { ease: 0.04, drape: 0.6, neck: 0.085 }), { gap: () => 0.14 }), m).geometry, 0.006, 28, 8); sleeves(g, m, sleeveLen.long(B), 0.034, -0.008); add(g, loft(shell(0.94, 0.9, { ease: 0.032 }), { gap: () => 0.14 }), fabricMat('rib', 'black')); } },
+    cardigan: { name: 'Long cardigan', f: 1, fabric: 'knit', build(g, s) { const m = sel2mat(s, 'knit'); folds(add(g, loft(shell(B.shoulderY + 0.07, 0.62, { ease: 0.028, drape: 0.7, neck: 0.085 }), { gap: () => 0.26 }), m).geometry, 0.005); sleeves(g, m, sleeveLen.long(B), 0.026, 0.004); } },
+    puffer: { name: 'Puffer', f: 1, fabric: 'nylon', cost: 80, build(g, s) { const m = sel2mat(s, 'nylon'); add(g, loft(shell(B.shoulderY + 0.08, 0.86, { ease: 0.06, drape: 0.8, neck: 0.1 }), { seg: 56, bulge: r => Math.abs(Math.sin(r.y * 52)) * 0.018 }), m); for (const sd of [-1, 1]) add(g, loft(armRows(sd, 0.05, 0.02, -(sleeveLen.long(B) - 0.02)), { seg: 28, bulge: r => Math.abs(Math.sin(r.y * 40)) * 0.012 }), m); } },
+  };
+  // shoes are lofted along the foot: [z along foot, half width, height above centre, depth below centre, centre height]
+  function shoeShell(sd, prof, mat, o = {}) {
+    const x = sd * (B.leg.x - 0.01) + (o.dx || 0);
+    const rows = catmull(prof.map(([z, rx, up, dn, c]) => ({ y: -z, rx, rzf: up, rzb: dn, x: 0, z: c })), 5);
+    rows.unshift({ ...rows[0], rx: 0.002, rzf: 0.002, rzb: 0.002 }); rows.push({ ...rows[rows.length - 1], rx: 0.002, rzf: 0.002, rzb: 0.002 });
+    const m = add(g0, loft(rows, { seg: 32, gap: o.gap }), mat, x, 0, 0.045); m.rotation.x = -Math.PI / 2; return m;
+  }
+  let g0 = null;
+  const SHOE_P = {
+    sneaker: [[-0.085, .03, .045, .02, .045], [-0.07, .042, .06, .03, .045], [-0.02, .045, .06, .036, .043], [0.04, .049, .047, .036, .04], [0.1, .048, .035, .034, .036], [0.15, .04, .025, .03, .033], [0.172, .022, .014, .022, .03]],
+    sole: [[-0.088, .034, .014, .012, .013], [-0.06, .047, .014, .012, .013], [0.04, .054, .014, .012, .013], [0.12, .052, .014, .012, .013], [0.165, .038, .012, .011, .013], [0.18, .018, .008, .008, .013]],
+    dress: [[-0.08, .03, .04, .025, .038], [-0.065, .04, .05, .03, .038], [-0.01, .043, .05, .032, .037], [0.05, .046, .038, .033, .034], [0.12, .044, .026, .03, .031], [0.17, .03, .016, .024, .028], [0.19, .012, .008, .014, .026]],
+    pump: [[-0.075, .03, .032, .02, .05], [-0.06, .038, .036, .024, .048], [0.0, .041, .028, .028, .042], [0.06, .045, .03, .032, .036], [0.13, .04, .022, .026, .03], [0.18, .022, .012, .016, .026], [0.205, .006, .004, .006, .024]],
+    footbed: [[-0.08, .036, .006, .006, .006], [0.0, .044, .006, .006, .006], [0.13, .046, .006, .006, .006], [0.175, .03, .005, .005, .006]],
+  };
+  function lowShoe(g, s, kind) {
+    g0 = g; const m = fabricMat('leather', s.color);
+    for (const sd of [-1, 1]) {
+      if (kind === 'sneaker') { shoeShell(sd, SHOE_P.sneaker, m); shoeShell(sd, SHOE_P.sole, solid(0xf3f1ea, 0.75)); add(g, new THREE.TorusGeometry(0.034, 0.007, 8, 22), m, sd * (B.leg.x - 0.01), 0.1, -0.012).rotation.x = Math.PI / 2 - 0.25;
+        for (let i = 0; i < 4; i++) add(g, new THREE.BoxGeometry(0.03, 0.003, 0.005), solid(0xf3f1ea, 0.8), sd * (B.leg.x - 0.01), 0.095 - i * 0.008, 0.045 + i * 0.022).rotation.x = -0.45; }
+      if (kind === 'dress') { shoeShell(sd, SHOE_P.dress, m); shoeShell(sd, SHOE_P.footbed, solid(0x1a1410, 0.6)); }
+      if (kind === 'pump') { shoeShell(sd, SHOE_P.pump, m, { gap: r => r.y < 0.06 && r.y > -0.05 ? 1.1 : 0 }); const h = add(g, new THREE.CylinderGeometry(0.007, 0.012, 0.06, 12), m, sd * (B.leg.x - 0.01), 0.03, -0.022); h.rotation.x = 0.1; }
+    }
+  }
+  const SHOES = {
+    sneakers: { name: 'Sneakers', f: 0, build(g, s) { lowShoe(g, s, 'sneaker'); } },
+    pumps: { name: 'Pumps', f: 3, build(g, s) { lowShoe(g, s, 'pump'); } },
+    oxfords: { name: 'Oxfords', f: 3, build(g, s) { lowShoe(g, s, 'dress'); for (const sd of [-1, 1]) add(g, new THREE.BoxGeometry(0.03, 0.002, 0.04), solid(shadeHex(C[s.color].hex, 0.7), 0.5), sd * (B.leg.x - 0.01), 0.087, 0.07).rotation.x = -0.35; } },
+    loafers: { name: 'Loafers', f: 2, build(g, s) { lowShoe(g, s, 'dress'); for (const sd of [-1, 1]) add(g, new THREE.BoxGeometry(0.032, 0.006, 0.012), solid(0xd4ad4b, 0.2, 1), sd * (B.leg.x - 0.01), 0.083, 0.085).rotation.x = -0.35; } },
+    ankle: { name: 'Ankle boots', f: 2, build(g, s) { const m = fabricMat('leather', s.color); lowShoe(g, s, 'dress'); for (const sd of [-1, 1]) add(g, loft(legRows(sd, 0.007, 0.2, 0.06)), m); } },
+    chelsea: { name: 'Chelsea boots', f: 2, build(g, s) { SHOES.ankle.build(g, s); for (const sd of [-1, 1]) for (const k of [-1, 1]) add(g, new THREE.BoxGeometry(0.004, 0.07, 0.03), fabricMat('rib', 'black'), sd * (B.leg.x - 0.01) + k * 0.037, 0.14, 0.0); } },
+    kneeboots: { name: 'Knee boots', f: 2, cost: 80, build(g, s) { const m = fabricMat('leather', s.color); lowShoe(g, s, 'pump'); for (const sd of [-1, 1]) add(g, loft(legRows(sd, 0.007, 0.48, 0.06)), m); } },
+    sandals: { name: 'Sandals', f: 1, build(g, s) { const m = fabricMat('leather', s.color); g0 = g; for (const sd of [-1, 1]) { const x = sd * (B.leg.x - 0.01); shoeShell(sd, SHOE_P.footbed, m); for (const z of [0.1, 0.035]) add(g, new THREE.TorusGeometry(0.04, 0.007, 6, 18, Math.PI), m, x, 0.012, z).rotation.y = Math.PI / 2; add(g, new THREE.TorusGeometry(0.04, 0.005, 6, 24), m, x, 0.075, -0.01).rotation.x = Math.PI / 2; } } },
+  };
+  const BAGS = {
+    tote: { name: 'Tote', f: 1, build(g, s) { const m = fabricMat('leather', s.color), hand = handPos(1); add(g, new THREE.BoxGeometry(0.3, 0.28, 0.12), m, hand.x + 0.06, hand.y - 0.2, hand.z); add(g, new THREE.TorusGeometry(0.08, 0.008, 8, 24, Math.PI), m, hand.x + 0.06, hand.y - 0.06, hand.z); } },
+    clutch: { name: 'Clutch', f: 3, build(g, s) { const m = fabricMat('leather', s.color), hand = handPos(1); add(g, new THREE.BoxGeometry(0.06, 0.14, 0.24), m, hand.x + 0.02, hand.y - 0.05, hand.z + 0.02).rotation.x = 0.1; } },
+    cross: { name: 'Crossbody', f: 1, build(g, s) { const m = fabricMat('leather', s.color); add(g, new THREE.BoxGeometry(0.2, 0.15, 0.06), m, 0.19, B.hipY - 0.02, 0.06).rotation.y = 0.5; const c = new THREE.CatmullRomCurve3([new V3(-0.14, B.shoulderY, 0.05), new V3(0, bodyAt(1.2).y, bodyAt(1.2).rzf + 0.025), new V3(0.17, B.hipY + 0.06, 0.1)]); add(g, new THREE.TubeGeometry(c, 30, 0.005, 6), m); } },
+    mini: { name: 'Top-handle', f: 2, cost: 60, build(g, s) { const m = fabricMat('leather', s.color), hand = handPos(1); add(g, new THREE.BoxGeometry(0.2, 0.15, 0.09), m, hand.x + 0.04, hand.y - 0.13, hand.z); add(g, new THREE.TorusGeometry(0.05, 0.008, 8, 20, Math.PI), m, hand.x + 0.04, hand.y - 0.055, hand.z); } },
+  };
+  const HATS = {
+    beret: { name: 'Beret', f: 2, fabric: 'wool', build(g, s) { const h = B.head; const m = add(g, new THREE.SphereGeometry(1, 32, 16), sel2mat(s, 'wool'), 0.02, h.y + 0.08, -0.01); m.scale.set(0.12, 0.04, 0.12); m.rotation.z = -0.2; } },
+    sunhat: { name: 'Sun hat', f: 1, fabric: 'cotton', cost: 40, build(g, s) { const h = B.head, m = sel2mat(s, 'cotton'); const brim = add(g, new THREE.CylinderGeometry(0.24, 0.24, 0.006, 48), m, 0, h.y + 0.055, 0); brim.rotation.x = 0.06; const crown = add(g, new THREE.CylinderGeometry(0.085, 0.1, 0.09, 40), m, 0, h.y + 0.1, -0.005); add(g, new THREE.CylinderGeometry(0.101, 0.101, 0.02, 40, 1, true), solid(0x1c1b1f, 0.6), 0, h.y + 0.068, -0.005); } },
+    beanie: { name: 'Beanie', f: 0, fabric: 'knit', build(g, s) { const h = B.head, m = sel2mat(s, 'knit'); const c = add(g, new THREE.SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), m, 0, h.y + 0.02, -0.005); c.scale.set(h.r[0] * 1.12, h.r[1] * 1.12, h.r[2] * 1.12); add(g, new THREE.CylinderGeometry(h.r[0] * 1.15, h.r[0] * 1.15, 0.04, 32, 1, true), sel2mat(s, 'rib'), 0, h.y + 0.03, -0.005).scale.z = h.r[2] / h.r[0]; } },
+    cap: { name: 'Cap', f: 0, fabric: 'cotton', build(g, s) { const h = B.head, m = sel2mat(s, 'cotton'); const c = add(g, new THREE.SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), m, 0, h.y + 0.025, -0.005); c.scale.set(h.r[0] * 1.1, h.r[1] * 0.95, h.r[2] * 1.1); const br = add(g, new THREE.CylinderGeometry(0.09, 0.09, 0.006, 32, 1, false, -Math.PI * 0.5, Math.PI), m, 0, h.y + 0.03, h.r[2] * 0.9); br.rotation.x = 0.12; br.scale.z = 0.8; } },
+    fedora: { name: 'Fedora', f: 2, fabric: 'wool', cost: 50, build(g, s) { const h = B.head, m = sel2mat(s, 'wool'); add(g, new THREE.CylinderGeometry(0.16, 0.16, 0.006, 48), m, 0, h.y + 0.07, 0); add(g, new THREE.CylinderGeometry(0.08, 0.1, 0.1, 40), m, 0, h.y + 0.12, -0.005); add(g, new THREE.CylinderGeometry(0.101, 0.101, 0.022, 40, 1, true), solid(0x1c1b1f, 0.6), 0, h.y + 0.085, -0.005); } },
+  };
+  function handPos(side) { const w = armRows(side).slice(-1)[0]; return { x: w.x + side * 0.03, y: w.y - 0.05, z: w.z + 0.01 }; }
+  // jewellery and small accessories
+  function buildJewels(g, o) {
+    const metal = solid(METALS[o.metal][1], 0.18, 1);
+    const H = B.head;
+    if (o.earrings) for (const s of [-1, 1]) {
+      const p = new V3(s * (H.r[0] + 0.002), H.y - 0.03, 0.005);
+      if (o.earrings === 'studs') add(g, new THREE.SphereGeometry(0.006, 14, 10), metal, p.x, p.y, p.z);
+      if (o.earrings === 'hoops') add(g, new THREE.TorusGeometry(0.018, 0.0025, 8, 28), metal, p.x, p.y - 0.018, p.z).rotation.y = Math.PI / 2;
+      if (o.earrings === 'drops') { add(g, new THREE.CylinderGeometry(0.0012, 0.0012, 0.03, 6), metal, p.x, p.y - 0.015, p.z); add(g, new THREE.SphereGeometry(0.008, 14, 10), solid(0x2fb3a5, 0.05, 0, { clearcoat: 1, transmission: 0.3 }), p.x, p.y - 0.035, p.z); }
+    }
+    if (o.necklace) {
+      const yN = B.shoulderY + 0.04, b = bodyAt(yN - 0.06), pts = [];
+      for (let i = 0; i <= 24; i++) { const a = Math.PI * 0.12 + i / 24 * Math.PI * 0.76; pts.push(new V3(Math.cos(a) * 0.075, yN - Math.sin(a) * (o.necklace === 'statement' ? 0.05 : 0.08), Math.sin(a) * (b.rzf + 0.012) - 0.01)); }
+      const curve = new THREE.CatmullRomCurve3(pts);
+      if (o.necklace === 'pearls') pts.forEach(p => add(g, new THREE.SphereGeometry(0.0065, 14, 10), solid(0xf4efe4, 0.2, 0, { sheen: 1, clearcoat: 1 }), p.x, p.y, p.z));
+      else add(g, new THREE.TubeGeometry(curve, 48, o.necklace === 'statement' ? 0.007 : 0.0015, 8), metal);
+      if (o.necklace === 'pendant') { const p = curve.getPoint(0.5); add(g, new THREE.OctahedronGeometry(0.012), metal, p.x, p.y - 0.012, p.z + 0.004); }
+      if (o.necklace === 'statement') for (const t of [0.3, 0.5, 0.7]) { const p = curve.getPoint(t); add(g, new THREE.SphereGeometry(0.01, 14, 10), solid(0x1f8a7a, 0.05, 0, { clearcoat: 1 }), p.x, p.y - 0.006, p.z + 0.006); }
+    }
+    if (o.watch) { const w = armRows(-1).slice(-1)[0]; const band = add(g, new THREE.TorusGeometry(0.03, 0.006, 8, 24), o.watch === 'steel' ? metal : solid(0x3a2418, 0.6), w.x, w.y + 0.02, w.z); band.rotation.x = Math.PI / 2; add(g, new THREE.CylinderGeometry(0.016, 0.016, 0.008, 24), metal, w.x - 0.03, w.y + 0.02, w.z).rotation.z = Math.PI / 2; }
+    if (o.tie && (o.top && ['shirt'].includes(o.top.id))) {
+      const tm = fabricMat('silk', o.tie, 'solid'), yT = B.shoulderY + 0.03;
+      const shape = new THREE.Shape([new THREE.Vector2(-0.018, 0), new THREE.Vector2(0.018, 0), new THREE.Vector2(0.04, -0.4), new THREE.Vector2(0, -0.44), new THREE.Vector2(-0.04, -0.4)]);
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.004, bevelEnabled: false });
+      const t = add(g, geo, tm, 0, yT, bodyAt(yT - 0.15).rzf + 0.024); t.rotation.x = -0.12;
+      add(g, new THREE.BoxGeometry(0.035, 0.028, 0.02), tm, 0, yT + 0.005, bodyAt(yT).rzf + 0.025);
+    }
+    if (o.belt && (o.bottom || o.dress)) {
+      const y = o.dress ? B.waistY : B.waistY - 0.015;
+      add(g, loft(shell(y + 0.015, y - 0.015, { ease: o.dress ? 0.018 : 0.022 })), fabricMat('leather', o.belt === 'brown' ? 'chocolate' : o.belt === 'tan' ? 'camel' : 'black'));
+      add(g, new THREE.BoxGeometry(0.04, 0.032, 0.008), metal, 0, y, bodyAt(y).rzf + 0.03);
+    }
+    if (o.glasses) { const H2 = B.head; for (const s of [-1, 1]) { add(g, new THREE.TorusGeometry(0.019, 0.0025, 8, 24), solid(0x111111, 0.3), s * 0.032, H2.y + 0.012, H2.r[2] + 0.004); add(g, new THREE.CircleGeometry(0.018, 24), solid(0x1a1a1a, 0.05, 0.3, { transparent: true, opacity: 0.75 }), s * 0.032, H2.y + 0.012, H2.r[2] + 0.004); } add(g, new THREE.BoxGeometry(0.02, 0.003, 0.003), solid(0x111111, 0.3), 0, H2.y + 0.016, H2.r[2] + 0.006); }
+  }
+
+  // ---------- wardrobes per model ----------
+  const WARD = {
+    f: { top: ['tee', 'blouse', 'crop', 'turtle', 'cami'], bottom: ['jeans', 'trousers', 'pencil', 'midi', 'shorts', 'pleat'], dress: ['slip', 'sundress', 'wrap', 'bodycon', 'gown'], outer: ['blazer', 'trench', 'denimjkt', 'cardigan', 'puffer'], shoes: ['sneakers', 'pumps', 'ankle', 'sandals', 'kneeboots'], bag: ['tote', 'clutch', 'cross', 'mini'], hat: ['beret', 'sunhat', 'beanie', 'cap'],
+      hair: [['long', 'Long'], ['bob', 'Bob'], ['bun', 'Bun'], ['pony', 'Ponytail'], ['curls', 'Curls']] },
+    m: { top: ['tee', 'shirt', 'polo', 'sweater', 'turtle'], bottom: ['jeans', 'chinos', 'suitpants', 'shorts'], outer: ['blazer', 'overcoat', 'bomber', 'denimjkt', 'puffer'], shoes: ['sneakers', 'oxfords', 'loafers', 'chelsea', 'sandals'], hat: ['cap', 'beanie', 'fedora'],
+      hair: [['crop', 'Short crop'], ['part', 'Side part'], ['buzz', 'Buzz'], ['curls', 'Curls'], ['manbun', 'Man bun']] },
+  };
+  const LIB = Object.assign({}, FT, SHOES, BAGS, HATS);
+  const itemDef = id => LIB[id];
+  const SLOT_DEFS = { top: FT, bottom: FT, dress: FT, outer: FT, shoes: SHOES, bag: BAGS, hat: HATS };
+  const DEFAULTS = {
+    f: { gender: 'f', skin: 2, hair: { style: 'long', color: 'espresso' }, top: { id: 'tee', color: 'white', pattern: 'solid' }, bottom: { id: 'jeans', color: 'denim', pattern: 'solid' }, dress: null, outer: null, shoes: { id: 'sneakers', color: 'white' }, bag: null, hat: null, earrings: null, necklace: null, belt: null, watch: null, tie: null, glasses: false, metal: 'gold' },
+    m: { gender: 'm', skin: 3, hair: { style: 'crop', color: 'black' }, top: { id: 'tee', color: 'white', pattern: 'solid' }, bottom: { id: 'jeans', color: 'denim', pattern: 'solid' }, dress: null, outer: null, shoes: { id: 'sneakers', color: 'white' }, bag: null, hat: null, earrings: null, necklace: null, belt: null, watch: null, tie: null, glasses: false, metal: 'silver' },
+  };
+
+  // ---------- state ----------
+  function load(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+  function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  let outfits = load('muse3d-outfits', { f: JSON.parse(JSON.stringify(DEFAULTS.f)), m: JSON.parse(JSON.stringify(DEFAULTS.m)) });
+  let outfit = outfits.f;
+  let coins = load('muse3d-coins', 150), owned = new Set(load('muse3d-owned', [])), stars = load('muse3d-stars', {}), looks = load('muse3d-looks', []);
+  let challengeId = 'studio';
+  const persist = () => { outfits[gender] = outfit; save('muse3d-outfits', outfits); save('muse3d-coins', coins); save('muse3d-owned', [...owned]); save('muse3d-stars', stars); save('muse3d-looks', looks); };
+
+  // ---------- assemble the model ----------
+  function buildOutfit(o, target = model) {
+    target.clear();
+    target.add(buildBody(o));
+    const clothes = new THREE.Group(); target.add(clothes);
+    { const u = o.dress || o.bottom, d = u && SLOT_DEFS[o.dress ? 'dress' : 'bottom'][u.id]; underFlare = d && d.flare || null; }
+    const put = (slot, sel) => { if (!sel) return; const def = SLOT_DEFS[slot][sel.id]; if (def) { const g = new THREE.Group(); layerBoost = slot === 'outer' ? 0.026 + (o.top && ['sweater', 'turtle'].includes(o.top.id) ? 0.008 : 0) : 0; def.build(g, sel); layerBoost = 0; clothes.add(g); } };
+    if (o.dress) put('dress', o.dress); else { put('bottom', o.bottom); put('top', o.top); }
+    put('outer', o.outer); put('shoes', o.shoes); put('bag', o.bag); put('hat', o.hat);
+    buildJewels(clothes, o);
+    target.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+  }
+
+  // ---------- camera: turntable ----------
+  let yaw = 0.35, pitch = 0.05, dist = 4.6, look = new V3(0, 0.95, 0), want = { yaw: 0.35, dist: 4.6, look: new V3(0, 0.95, 0) }, idleT = 0;
+  function frameModel() { const h = B.height; want.look.set(0, h * 0.53, 0); want.dist = h * 2.55; }
+  const VIEWS = [() => { want.yaw = 0.3; frameModel(); }, () => { want.yaw = Math.PI / 2; frameModel(); }, () => { want.yaw = Math.PI; frameModel(); }, () => { want.yaw = 0.15; want.look.set(0, B.head.y - 0.04, 0); want.dist = 1.0; }];
+  document.querySelectorAll('.views button').forEach(b => b.addEventListener('click', () => { VIEWS[+b.dataset.view](); idleT = -8; }));
+  const pointers = new Map(); let pinch = 0;
+  stageEl.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); try { stageEl.setPointerCapture(e.pointerId); } catch (er) {} idleT = -8; });
+  stageEl.addEventListener('pointermove', e => {
+    const p = pointers.get(e.pointerId); if (!p) return;
+    if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()], d0 = Math.hypot(a.x - b.x, a.y - b.y);
+      p.x = e.clientX; p.y = e.clientY;
+      const [c, d] = [...pointers.values()], d1 = Math.hypot(c.x - d.x, c.y - d.y);
+      want.dist = clamp(want.dist * d0 / Math.max(1, d1), 0.8, 6); return;
+    }
+    want.yaw -= (e.clientX - p.x) * 0.01; want.look.y = clamp(want.look.y + (e.clientY - p.y) * 0.003, 0.2, B.height); p.x = e.clientX; p.y = e.clientY; idleT = -8;
+  });
+  const up = e => pointers.delete(e.pointerId);
+  stageEl.addEventListener('pointerup', up); stageEl.addEventListener('pointercancel', up);
+  stageEl.addEventListener('wheel', e => { e.preventDefault(); want.dist = clamp(want.dist * (e.deltaY > 0 ? 1.1 : 0.9), 0.8, 6); idleT = -8; }, { passive: false });
+
+  let host = stageEl;
+  function resize() {
+    const w = host.clientWidth, h = host.clientHeight;
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+  addEventListener('resize', resize);
+  let last = performance.now(), spin = 0;
+  function loop(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    idleT += dt;
+    if (idleT > 6 || spin) want.yaw += dt * (spin || 0.18);
+    yaw = lerp(yaw, want.yaw, 1 - Math.exp(-dt * 6)); dist = lerp(dist, want.dist, 1 - Math.exp(-dt * 6)); look.lerp(want.look, 1 - Math.exp(-dt * 6));
+    camera.position.set(Math.sin(yaw) * dist, look.y + 0.1 + pitch * dist, Math.cos(yaw) * dist); camera.lookAt(look);
+    renderer.render(scene, camera);
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- client briefs ----------
+  const is = (o, slot, ids) => o[slot] && ids.includes(o[slot].id);
+  const worn = o => ['dress', 'top', 'bottom', 'outer', 'shoes', 'bag', 'hat'].filter(k => o[k] && !(o.dress && (k === 'top' || k === 'bottom')));
+  const colorsOf = o => worn(o).map(k => C[o[k].color]);
+  const anyColor = (o, test) => worn(o).some(k => test(C[o[k].color], k));
+  const brights = o => new Set(colorsOf(o).filter(c => !c.neutral).map(c => Math.round(c.h / 30))).size;
+  const CH = {
+    f: [
+      { id: 'studio', title: 'Free Studio', scene: 'studio', blurb: 'Style anything you like. The stylist still gives you honest notes.', brief: [], avoid: [] },
+      { id: 'coffee', title: 'Weekend Coffee Date', scene: 'cafe', reward: 60, blurb: 'Relaxed, put-together, and comfy enough to walk to the café.', brief: [['Comfy shoes', o => is(o, 'shoes', ['sneakers', 'sandals', 'ankle', 'kneeboots'])], ['Top and bottom, or a sundress', o => (!o.dress && o.top && o.bottom) || is(o, 'dress', ['sundress', 'wrap'])], ['At most 2 bright colours', o => brights(o) <= 2]], avoid: [['A gown is too much for coffee', o => is(o, 'dress', ['gown'])]] },
+      { id: 'wedding', title: 'Garden Wedding Guest', scene: 'garden', reward: 90, blurb: 'An afternoon ceremony under the trees. Never upstage the bride.', brief: [['A dress', o => !!o.dress], ['Not white or ivory', o => !anyColor(o, (c, k) => (k === 'dress' || k === 'outer') && (c.key === 'white' || c.key === 'ivory'))], ['Heels or sandals', o => is(o, 'shoes', ['pumps', 'sandals'])], ['A clutch or top-handle bag', o => is(o, 'bag', ['clutch', 'mini'])], ['Pastels or florals', o => o.dress && (o.dress.pattern === 'floral' || C[o.dress.color].l > 0.66)]], avoid: [['Sneakers at a wedding', o => is(o, 'shoes', ['sneakers'])]] },
+      { id: 'office', title: 'Office Power Look', scene: 'office', reward: 90, blurb: 'Big presentation today. Sharp, confident, polished.', brief: [['A blazer or trench', o => is(o, 'outer', ['blazer', 'trench'])], ['Trousers, pencil skirt or midi', o => is(o, 'bottom', ['trousers', 'pencil', 'midi']) || is(o, 'dress', ['wrap'])], ['Closed shoes', o => is(o, 'shoes', ['pumps', 'ankle', 'kneeboots'])], ['Neutrals plus one accent', o => brights(o) <= 1]], avoid: [['Too casual for the office', o => is(o, 'top', ['crop']) || is(o, 'bottom', ['shorts', 'pleat']) || is(o, 'dress', ['bodycon'])]] },
+      { id: 'beach', title: 'Beach Day', scene: 'beach', reward: 90, blurb: 'Sun, sand and a seaside lunch.', brief: [['Sandals or sneakers', o => is(o, 'shoes', ['sandals', 'sneakers'])], ['Shorts, a mini or a sundress', o => is(o, 'bottom', ['shorts', 'pleat']) || is(o, 'dress', ['sundress', 'slip'])], ['A sun hat', o => is(o, 'hat', ['sunhat'])], ['Light or bright colours', o => colorsOf(o).filter(c => c.l > 0.55 || c.s > 0.6).length >= 2]], avoid: [['Too warm for the beach', o => is(o, 'outer', ['puffer', 'trench']) || is(o, 'shoes', ['kneeboots', 'ankle']) || is(o, 'top', ['turtle'])]] },
+      { id: 'gala', title: 'Gala Night', scene: 'gala', reward: 120, blurb: 'Black-tie charity gala. Cameras everywhere.', brief: [['A gown or slip dress', o => is(o, 'dress', ['gown', 'slip'])], ['Heels', o => is(o, 'shoes', ['pumps'])], ['A clutch', o => is(o, 'bag', ['clutch'])], ['Earrings and a necklace', o => !!(o.earrings && o.necklace)], ['Black or a jewel tone', o => o.dress && ['black', 'burgundy', 'emerald', 'royal', 'purple', 'navy', 'teal', 'red'].includes(o.dress.color)]], avoid: [['Sporty pieces at black tie', o => is(o, 'shoes', ['sneakers']) || is(o, 'hat', ['cap', 'beanie'])]] },
+      { id: 'winter', title: 'Winter in the City', scene: 'winter', reward: 120, blurb: 'Minus five and windy. Warm but still chic.', brief: [['A puffer or trench', o => is(o, 'outer', ['puffer', 'trench'])], ['Boots', o => is(o, 'shoes', ['ankle', 'kneeboots'])], ['A warm layer', o => is(o, 'top', ['turtle', 'blouse']) || is(o, 'dress', ['wrap'])], ['A beanie or beret', o => is(o, 'hat', ['beanie', 'beret'])]], avoid: [['Freezing in this', o => is(o, 'shoes', ['sandals']) || is(o, 'bottom', ['shorts']) || is(o, 'top', ['cami', 'crop'])]] },
+      { id: 'interview', title: 'Job Interview', scene: 'office', reward: 150, blurb: 'Final round at a law firm. Trustworthy and composed.', brief: [['A blazer or blouse', o => is(o, 'outer', ['blazer']) || is(o, 'top', ['blouse'])], ['A neutral base', o => colorsOf(o).filter(c => c.neutral).length >= 2], ['Closed shoes', o => is(o, 'shoes', ['pumps', 'ankle'])], ['Minimal jewellery', o => !o.earrings || o.earrings === 'studs']], avoid: [['Too revealing for an interview', o => is(o, 'top', ['crop', 'cami']) || is(o, 'bottom', ['shorts', 'pleat']) || is(o, 'dress', ['bodycon', 'slip'])]] },
+    ],
+    m: [
+      { id: 'studio', title: 'Free Studio', scene: 'studio', blurb: 'Style anything you like. The stylist still gives you honest notes.', brief: [], avoid: [] },
+      { id: 'brunch', title: 'Weekend Brunch', scene: 'cafe', reward: 60, blurb: 'Laid-back but sharp. Good shoes, easy layers.', brief: [['Casual shoes: sneakers or loafers', o => is(o, 'shoes', ['sneakers', 'loafers', 'chelsea'])], ['Tee, polo or shirt', o => is(o, 'top', ['tee', 'polo', 'shirt'])], ['At most 2 bright colours', o => brights(o) <= 2]], avoid: [['A tie is too much for brunch', o => !!o.tie && is(o, 'top', ['shirt'])]] },
+      { id: 'mwedding', title: 'Wedding Guest', scene: 'garden', reward: 90, blurb: 'Summer garden wedding. Smart, celebratory, never louder than the groom.', brief: [['A blazer', o => is(o, 'outer', ['blazer'])], ['Shirt or polo', o => is(o, 'top', ['shirt', 'polo'])], ['Smart trousers', o => is(o, 'bottom', ['suitpants', 'chinos'])], ['Leather shoes', o => is(o, 'shoes', ['oxfords', 'loafers'])], ['Belt matches shoes', o => !!o.belt && o.shoes && ((o.belt === 'black') === (o.shoes.color === 'black'))]], avoid: [['Sneakers or shorts at a wedding', o => is(o, 'shoes', ['sneakers', 'sandals']) || is(o, 'bottom', ['shorts'])]] },
+      { id: 'moffice', title: 'Smart Office', scene: 'office', reward: 90, blurb: 'Client meeting at 10. Business smart, not stuffy.', brief: [['Shirt, polo or sweater', o => is(o, 'top', ['shirt', 'polo', 'sweater', 'turtle'])], ['Chinos or suit trousers', o => is(o, 'bottom', ['chinos', 'suitpants'])], ['Closed leather shoes', o => is(o, 'shoes', ['oxfords', 'loafers', 'chelsea'])], ['Neutrals plus one accent', o => brights(o) <= 1]], avoid: [['Too casual for the office', o => is(o, 'bottom', ['shorts']) || is(o, 'shoes', ['sandals'])]] },
+      { id: 'mbeach', title: 'Beach Day', scene: 'beach', reward: 90, blurb: 'Boardwalk, sunshine and a seafood lunch.', brief: [['Shorts', o => is(o, 'bottom', ['shorts'])], ['Sandals or sneakers', o => is(o, 'shoes', ['sandals', 'sneakers'])], ['Sun protection: cap or sunglasses', o => is(o, 'hat', ['cap']) || o.glasses], ['Light or bright colours', o => colorsOf(o).filter(c => c.l > 0.55 || c.s > 0.6).length >= 2]], avoid: [['Too warm for the beach', o => is(o, 'outer', ['overcoat', 'puffer']) || is(o, 'top', ['sweater', 'turtle']) || is(o, 'shoes', ['chelsea'])]] },
+      { id: 'mgala', title: 'Black-Tie Gala', scene: 'gala', reward: 120, blurb: 'Charity gala. Dark suit, tie, polished shoes.', brief: [['A blazer', o => is(o, 'outer', ['blazer'])], ['Suit trousers', o => is(o, 'bottom', ['suitpants'])], ['A shirt and tie', o => is(o, 'top', ['shirt']) && !!o.tie], ['Oxfords', o => is(o, 'shoes', ['oxfords'])], ['Black, navy or charcoal suit', o => o.outer && ['black', 'navy', 'charcoal'].includes(o.outer.color)]], avoid: [['Sporty pieces at black tie', o => is(o, 'shoes', ['sneakers', 'sandals']) || !!o.hat]] },
+      { id: 'mwinter', title: 'Winter in the City', scene: 'winter', reward: 120, blurb: 'Freezing wind between meetings.', brief: [['An overcoat or puffer', o => is(o, 'outer', ['overcoat', 'puffer'])], ['Boots', o => is(o, 'shoes', ['chelsea'])], ['A warm knit', o => is(o, 'top', ['sweater', 'turtle'])], ['A beanie', o => is(o, 'hat', ['beanie'])]], avoid: [['Freezing in this', o => is(o, 'bottom', ['shorts']) || is(o, 'shoes', ['sandals'])]] },
+      { id: 'minterview', title: 'Job Interview', scene: 'office', reward: 150, blurb: 'Final round at a bank. Trustworthy and composed.', brief: [['A blazer', o => is(o, 'outer', ['blazer'])], ['A shirt', o => is(o, 'top', ['shirt'])], ['Suit trousers or chinos', o => is(o, 'bottom', ['suitpants', 'chinos'])], ['Oxfords or loafers', o => is(o, 'shoes', ['oxfords', 'loafers'])], ['Navy, grey or charcoal suit', o => o.outer && ['navy', 'grey', 'charcoal'].includes(o.outer.color)]], avoid: [['Too casual for an interview', o => is(o, 'shoes', ['sneakers', 'sandals']) || is(o, 'bottom', ['shorts', 'jeans'])]] },
+    ],
+  };
+  const challenges = () => CH[gender];
+  const challenge = () => challenges().find(c => c.id === challengeId) || challenges()[0];
+  const unlockedChallenge = i => i <= 1 || (stars[challenges()[i - 1].id] || 0) >= 3;
+
+  // ---------- the stylist ----------
+  const slotName = k => ({ dress: 'dress', top: 'top', bottom: 'bottom', outer: 'jacket', shoes: 'shoes', bag: 'bag', hat: 'hat' }[k] || k);
+  function analyze(o, ch = challenge(), deep = true) {
+    const notes = [], addN = (kind, area, text, fix) => notes.push({ kind, area, text, fix });
+    const AREA = { dress: 6, top: 3, bottom: 3, outer: 4, shoes: 1, bag: 1, hat: 0.7 };
+    const pieces = worn(o).map(k => ({ slot: k, c: C[o[k].color], area: AREA[k], pattern: o[k].pattern || 'solid' }));
+    const total = pieces.reduce((a, p) => a + p.area, 0) || 1;
+    const br = pieces.filter(p => !p.c.neutral);
+    const fams = [];
+    for (const p of br.slice().sort((a, b) => b.area - a.area)) {
+      const f = fams.find(f => hueGap(f.h, p.c.h) < 22 && Math.abs(f.l - p.c.l) < 0.45);
+      if (f) { f.area += p.area; f.items.push(p); } else fams.push({ h: p.c.h, l: p.c.l, s: p.c.s, area: p.area, items: [p] });
+    }
+    fams.sort((a, b) => b.area - a.area);
+    const smallest = fam => fam.items.slice().sort((a, b) => a.area - b.area)[0];
+    let color = 7, harmony = 'Neutral palette';
+    if (!fams.length) { color += 1.2; harmony = 'All neutrals'; addN('good', 'color', 'An all-neutral palette always looks expensive. Add one accent if you want a focal point.'); }
+    else if (fams.length === 1) { color += 1.8; harmony = br.length > 1 ? 'Monochrome' : 'Neutrals + one accent'; addN('good', 'color', br.length > 1 ? `Tonal ${fams[0].items[0].c.name.toLowerCase()} in different depths looks deliberate.` : `${fams[0].items[0].c.name} pops against your neutral base. A stylist favourite.`); }
+    else {
+      const [a, b] = fams, gap = hueGap(a.h, b.h);
+      if (fams.length === 2) {
+        if (gap <= 40) { color += 1.5; harmony = 'Analogous'; addN('good', 'color', `${a.items[0].c.name} and ${b.items[0].c.name} sit side by side on the colour wheel, so they blend smoothly.`); }
+        else if (gap >= 150) { harmony = 'Complementary'; if (a.s > 0.5 && b.s > 0.5 && b.area >= 3) { color -= 0.5; addN('warn', 'color', `${a.items[0].c.name} and ${b.items[0].c.name} are opposites. Stylists keep one of them small, like a single accessory, or mute it.`, deep && { slot: smallest(b).slot, neutral: true, label: `Tone down the ${slotName(smallest(b).slot)}` }); } else { color += 1.2; addN('good', 'color', `Complementary contrast: ${a.items[0].c.name} with a touch of ${b.items[0].c.name}. Bold and balanced.`); } }
+        else if (gap >= 105 && gap <= 135) { color += 0.5; harmony = 'Triadic split'; addN('tip', 'color', `${a.items[0].c.name} and ${b.items[0].c.name} make a playful pairing. Keep everything else neutral.`); }
+        else if (a.s > 0.45 && b.s > 0.45) { color -= 2; harmony = 'Clashing'; addN('warn', 'color', `${a.items[0].c.name} and ${b.items[0].c.name} clash: too far apart to blend, too close to contrast.`, deep && { slot: smallest(b).slot, label: `Change the ${slotName(smallest(b).slot)}` }); }
+        else { color += 0.3; harmony = 'Soft mix'; }
+      } else if (fams.length === 3) {
+        const gs = [hueGap(a.h, b.h), hueGap(b.h, fams[2].h), hueGap(a.h, fams[2].h)];
+        if (gs.every(g => g > 95 && g < 145)) { color += 0.4; harmony = 'Triadic'; addN('tip', 'color', 'Three evenly spaced colours: fun, but let one lead and keep the others small.'); }
+        else { color -= 1.6; harmony = 'Busy'; addN('warn', 'color', 'Three bright colours compete. Stylists stick to about three colours in total, neutrals included.', deep && { slot: smallest(fams[2]).slot, neutral: true, label: `Neutral ${slotName(smallest(fams[2]).slot)}` }); }
+      } else { color -= 3; harmony = 'Too many colours'; addN('warn', 'color', `${fams.length} bright colours is a lot. Keep to two plus neutrals.`, deep && { slot: smallest(fams[fams.length - 1]).slot, neutral: true, label: `Neutral ${slotName(smallest(fams[fams.length - 1]).slot)}` }); }
+      // 60-30-10: one colour should lead
+      if (fams.length >= 2 && fams[0].area / total < 0.45 && fams[1].area / total > 0.3) { color -= 0.6; addN('tip', 'color', `${fams[0].items[0].c.name} and ${fams[1].items[0].c.name} are split evenly. Try the 60-30-10 rule: one colour leads, one supports, one accents.`); }
+    }
+    const distinct = new Set(pieces.map(p => p.c.key)).size;
+    if (distinct >= 5) { color -= 0.8; addN('tip', 'color', `${distinct} different colours in one outfit. Repeating a colour (shoes and bag, say) ties it together.`); }
+    if (br.length >= 2 && !pieces.some(p => p.c.neutral)) { color -= 0.6; addN('tip', 'color', 'Nothing neutral to rest the eye. Ground the look with black, white, navy, denim or camel.', deep && { slot: pieces.find(p => p.slot === 'shoes') ? 'shoes' : 'bottom', neutral: true, label: 'Add a neutral' }); }
+    const ls = pieces.map(p => p.c.l);
+    if (pieces.length >= 3 && Math.max(...ls) - Math.min(...ls) < 0.16) { color -= 0.6; addN('tip', 'color', 'Everything is the same depth of colour. Mix in something lighter or darker for contrast.', deep && { slot: pieces[pieces.length - 1].slot, contrast: true, label: 'Add contrast' }); }
+    // near the face: skin contrast and undertone
+    const faceSlot = o.dress ? 'dress' : o.top ? 'top' : null;
+    if (faceSlot) {
+      const [skHex, under] = SKINS[o.skin], sk = hsl(skHex), fc = C[o[faceSlot].color];
+      if (Math.abs(sk.l - fc.l) < 0.1 && hueGap(sk.h, fc.h) < 25) { color -= 0.8; addN('warn', 'color', `The ${slotName(faceSlot)} is very close to the skin tone, so it washes out the face.`, deep && { slot: faceSlot, contrast: true, label: 'More contrast' }); }
+      else if (under !== 'neutral' && fc.s > 0.45 && warmth(fc) && ((under === 'cool') !== (warmth(fc) < 0))) { color -= 0.3; addN('tip', 'color', `${under === 'cool' ? 'Cool' : 'Warm'} undertones glow in ${under === 'cool' ? 'blue-based shades like cobalt, emerald or plum' : 'yellow-based shades like coral, mustard or olive'}. ${fc.name} near the face is less flattering.`, deep && { slot: faceSlot, undertone: under, label: 'Flattering shade' }); }
+      else if (under !== 'neutral' && fc.s > 0.45 && warmth(fc)) addN('good', 'color', `${fc.name} suits a ${under} undertone.`);
+    }
+    if (o.shoes && o.bag && o.shoes.color === o.bag.color) { color += 0.5; addN('good', 'styling', 'Shoes and bag in the same colour: instantly polished.'); }
+    const prints = pieces.filter(p => p.pattern !== 'solid');
+    if (prints.length > 1) { color -= 1.5; addN('warn', 'color', 'Two prints compete. Keep one statement print and make the rest solid.', deep && { slot: prints.sort((a, b) => a.area - b.area)[0].slot, solid: true, label: 'Make it solid' }); }
+    else if (prints.length === 1 && fams.length <= 2) { color += 0.4; addN('good', 'color', `One ${prints[0].pattern === 'dots' ? 'polka-dot' : prints[0].pattern} piece is a strong focal point.`); }
+
+    let styling = 7;
+    if (!o.dress && !(o.top && o.bottom)) { styling -= 4; addN('warn', 'styling', o.top ? 'You need a bottom: jeans, trousers or a skirt.' : 'You need a top.', deep && { complete: true, label: 'Add it' }); }
+    if (!o.shoes) { styling -= 3; addN('warn', 'styling', 'Don\'t forget shoes!', deep && { item: 'shoes', label: 'Pick shoes' }); }
+    const acc = [o.bag, o.earrings, o.necklace, o.hat, o.belt, o.watch, o.tie, o.glasses].filter(Boolean).length;
+    if (acc === 0) { styling -= 1.2; addN('tip', 'styling', gender === 'm' ? 'Finish the look: a watch or a belt makes it feel complete.' : 'Finish the look with an accessory: earrings or a bag make it feel complete.', deep && { accessory: true, label: gender === 'm' ? 'Add a watch' : 'Add earrings' }); }
+    else if (acc >= 2 && acc <= 4) { styling += 1; addN('good', 'styling', 'Nicely accessorised.'); }
+    else if (acc >= 5) { styling -= 0.8; addN('tip', 'styling', 'Lots of accessories. Coco Chanel said take one off before you leave the house.'); }
+    if (gender === 'm' && o.belt && o.shoes && ['oxfords', 'loafers', 'chelsea'].includes(o.shoes.id)) {
+      const shoeBlack = o.shoes.color === 'black', beltBlack = o.belt === 'black';
+      if (shoeBlack !== beltBlack) { styling -= 0.8; addN('warn', 'styling', 'Classic menswear rule: match your belt leather to your shoes.', deep && { belt: shoeBlack ? 'black' : (o.shoes.color === 'camel' ? 'tan' : 'brown'), label: 'Match the belt' }); }
+      else { styling += 0.6; addN('good', 'styling', 'Belt and shoes match. Sharp.'); }
+    }
+    if (o.tie && is(o, 'top', ['shirt'])) { const tc = C[o.tie], sc = C[o.top.color]; if (tc.l < sc.l) { styling += 0.4; addN('good', 'styling', 'Tie darker than the shirt: the classic, balanced choice.'); } else addN('tip', 'styling', 'Ties usually read best a shade darker than the shirt.'); }
+    if (o.belt && (o.dress || is(o, 'bottom', ['trousers', 'midi', 'pencil', 'chinos', 'suitpants']))) { styling += 0.5; }
+    const form = [];
+    for (const k of ['dress', 'top', 'bottom', 'outer', 'shoes', 'bag', 'hat']) { if (!o[k] || (o.dress && (k === 'top' || k === 'bottom'))) continue; const d = itemDef(o[k].id); if (d) form.push({ slot: k, d, f: d.f }); }
+    if (form.length >= 2) {
+      const fs = form.map(x => x.f), hi = form.find(x => x.f === Math.max(...fs)), lo = form.find(x => x.f === Math.min(...fs));
+      if (hi.f - lo.f >= 3) { styling -= 1.6; addN('warn', 'styling', `The ${hi.d.name.toLowerCase()} is much dressier than the ${lo.d.name.toLowerCase()}. Match the formality.`, deep && { slot: ['shoes', 'bag', 'hat'].includes(lo.slot) ? lo.slot : hi.slot, formality: ['shoes', 'bag', 'hat'].includes(lo.slot) ? hi.f : lo.f, label: 'Match it' }); }
+    }
+    let occasion = 8, met = 0;
+    const checks = ch.brief.map(([label, test]) => { const ok = !!test(o); if (ok) met++; return { label, ok }; });
+    const fails = ch.avoid.filter(([, t]) => t(o)).map(([l]) => l);
+    if (ch.brief.length) {
+      occasion = 3 + 7 * met / ch.brief.length - fails.length * 2;
+      const missing = checks.filter(c => !c.ok);
+      if (!missing.length && !fails.length) addN('good', 'occasion', `Perfect for ${ch.title.toLowerCase()}: the whole brief is covered.`);
+      else for (const m of missing.slice(0, 2)) addN('warn', 'occasion', `The brief asks for: ${m.label.toLowerCase()}.`);
+      for (const f of fails) addN('warn', 'occasion', f + '.');
+    }
+    color = clamp(color, 0, 10); styling = clamp(styling, 0, 10); occasion = clamp(occasion, 0, 10);
+    const score = Math.round(ch.brief.length ? color * 3.8 + occasion * 3.6 + styling * 2.6 : color * 5.2 + styling * 4.8);
+    const order = { warn: 0, tip: 1, good: 2 }; notes.sort((a, b) => order[a.kind] - order[b.kind]);
+    return { total: clamp(score, 0, 100), color, styling, occasion, notes, checks, fails, harmony, pieces };
+  }
+  const starsFor = s => s >= 90 ? 5 : s >= 78 ? 4 : s >= 64 ? 3 : s >= 48 ? 2 : 1;
+  function bestColors(slot, filter = () => true, n = 3) {
+    if (!outfit[slot]) return [];
+    const base = JSON.parse(JSON.stringify(outfit)), res = [];
+    for (const c of Object.values(C)) { if (!filter(c)) continue; base[slot].color = c.key; res.push({ key: c.key, score: analyze(base, challenge(), false).total + (c.key === outfit[slot].color ? -0.01 : 0) }); }
+    return res.sort((a, b) => b.score - a.score).slice(0, n);
+  }
+  const fixFilter = f => {
+    const sk = hsl(SKINS[outfit.skin][0]);
+    if (f.neutral) return c => c.neutral;
+    if (f.contrast) return c => Math.abs(c.l - C[outfit[f.slot].color].l) > 0.3 && Math.abs(c.l - sk.l) > 0.15;
+    if (f.undertone) return c => warmth(c) === (f.undertone === 'cool' ? -1 : 1);
+    return c => c.key !== outfit[f.slot].color;
+  };
+  const isOwned = id => { const d = itemDef(id); return !d || !d.cost || owned.has(id); };
+  function applyFix(f) {
+    if (!f) return;
+    if (f.solid) outfit[f.slot].pattern = 'solid';
+    else if (f.complete) { if (!outfit.top) outfit.top = { id: 'tee', color: 'white', pattern: 'solid' }; if (!outfit.bottom) outfit.bottom = { id: 'jeans', color: 'denim', pattern: 'solid' }; outfit.dress = null; }
+    else if (f.accessory) { if (gender === 'm') outfit.watch = 'steel'; else outfit.earrings = 'studs'; }
+    else if (f.item) outfit.shoes = { id: WARD[gender].shoes[0], color: 'black' };
+    else if (f.belt) outfit.belt = f.belt;
+    else if (f.formality != null) { const opts = WARD[gender][f.slot].filter(id => isOwned(id) && Math.abs(itemDef(id).f - f.formality) <= 1 && (!outfit[f.slot] || id !== outfit[f.slot].id)); if (opts.length) outfit[f.slot] = { ...(outfit[f.slot] || { color: 'black', pattern: 'solid' }), id: opts[0] }; }
+    else if (f.slot) { const b = bestColors(f.slot, fixFilter(f), 1)[0]; if (b) outfit[f.slot].color = b.key; }
+    refresh(); toast('Stylist fix applied');
+  }
+  function fixPreview(f) { if (!f.slot || !outfit[f.slot] || f.solid || f.formality != null) return ''; const b = bestColors(f.slot, fixFilter(f), 1)[0]; return b ? `<i style="background:${C[b.key].hex}"></i>` : ''; }
+  function autoStyle() {
+    const ch = challenge(), W = WARD[gender], ownedOf = slot => (W[slot] || []).filter(isOwned), pick = a => a[Math.floor(Math.random() * a.length)];
+    let best = null;
+    for (let t = 0; t < 70; t++) {
+      const o = JSON.parse(JSON.stringify(outfit));
+      const useDress = gender === 'f' && Math.random() < 0.45;
+      o.dress = useDress ? { id: pick(ownedOf('dress')), color: 'black', pattern: 'solid' } : null;
+      o.top = useDress ? null : { id: pick(ownedOf('top')), color: 'white', pattern: 'solid' };
+      o.bottom = useDress ? null : { id: pick(ownedOf('bottom')), color: 'navy', pattern: 'solid' };
+      o.outer = Math.random() < 0.5 ? { id: pick(ownedOf('outer')), color: 'camel', pattern: 'solid' } : null;
+      o.shoes = { id: pick(ownedOf('shoes')), color: 'black' };
+      o.bag = gender === 'f' && Math.random() < 0.7 ? { id: pick(ownedOf('bag')), color: 'black' } : null;
+      o.hat = Math.random() < 0.3 ? { id: pick(ownedOf('hat')), color: 'black' } : null;
+      if (gender === 'f') { o.earrings = Math.random() < 0.7 ? pick(['studs', 'hoops', 'drops']) : null; o.necklace = Math.random() < 0.4 ? pick(['chain', 'pendant', 'pearls']) : null; }
+      else { o.watch = Math.random() < 0.7 ? pick(['steel', 'leather']) : null; o.tie = is(o, 'top', ['shirt']) && Math.random() < 0.6 ? pick(['navy', 'burgundy', 'charcoal', 'emerald']) : null; o.glasses = Math.random() < 0.2; }
+      o.belt = Math.random() < 0.5 ? pick(['black', 'brown']) : null;
+      // then swap pieces so the client's brief is ticked off
+      const briefHits = x => (ch.brief || []).filter(([, f]) => { try { return f(x); } catch (e) { return false; } }).length;
+      for (let pass = 0; pass < 2; pass++) for (const slot of o.dress ? ['dress', 'outer', 'shoes', 'hat', 'bag'] : ['top', 'bottom', 'outer', 'shoes', 'hat', 'bag']) {
+        if (!(W[slot] || []).length) continue;
+        const opts = [...ownedOf(slot), ...(['outer', 'hat', 'bag'].includes(slot) ? [null] : [])];
+        let top = -1, cands = [];
+        for (const id of opts) { const t = JSON.parse(JSON.stringify(o)); t[slot] = id ? { id, color: (o[slot] && o[slot].color) || 'black', pattern: 'solid' } : null; const h = briefHits(t); if (h > top) { top = h; cands = [t[slot]]; } else if (h === top) cands.push(t[slot]); }
+        if (!cands.some(c => JSON.stringify(c) === JSON.stringify(o[slot]))) o[slot] = pick(cands);
+        if (gender === 'm' && is(o, 'top', ['shirt']) && !o.tie) { const t = JSON.parse(JSON.stringify(o)); t.tie = 'navy'; if (briefHits(t) > briefHits(o)) o.tie = pick(['navy', 'burgundy', 'charcoal', 'emerald']); }
+      }
+      const keys = Object.keys(C);
+      for (const slot of ['dress', 'top', 'bottom', 'outer', 'shoes', 'bag', 'hat']) {
+        if (!o[slot]) continue; let bk = o[slot].color, bs = -1;
+        for (let i = 0; i < 10; i++) { const k = pick(keys); o[slot].color = k; const s = analyze(o, ch, false).total; if (s > bs) { bs = s; bk = k; } }
+        o[slot].color = bk;
+      }
+      if (o.belt && o.shoes) o.belt = o.shoes.color === 'black' ? 'black' : 'brown';
+      const score = analyze(o, ch, false).total;
+      if (!best || score > best.score) best = { o, score };
+    }
+    outfit = best.o; refresh(); toast('Your stylist put together a look');
+  }
+
+  // ---------- thumbnails: render each piece once in a tiny studio ----------
+  const thumbR = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  thumbR.setSize(152, 152); thumbR.outputEncoding = THREE.sRGBEncoding; thumbR.toneMapping = THREE.ACESFilmicToneMapping;
+  const thumbScene = new THREE.Scene(); thumbScene.environment = scene.environment;
+  thumbScene.add(new THREE.HemisphereLight(0xffffff, 0x998a90, 0.9)); const tl = new THREE.DirectionalLight(0xffffff, 1.6); tl.position.set(1, 2, 3); thumbScene.add(tl);
+  const thumbCam = new THREE.PerspectiveCamera(30, 1, 0.01, 20);
+  const thumbCache = {};
+  function thumbFor(slot, id) {
+    const k = gender + slot + id; if (thumbCache[k]) return thumbCache[k];
+    const g = new THREE.Group(); const def = itemDef(id);
+    def.build(g, { id, color: 'beige', pattern: 'solid' });
+    thumbScene.add(g);
+    const box = new THREE.Box3().setFromObject(g), c = box.getCenter(new V3()), s = box.getSize(new V3()), d = Math.max(s.x, s.y) * 2.2 + 0.05;
+    thumbCam.position.set(c.x + d * 0.3, c.y + d * 0.12, c.z + d); thumbCam.lookAt(c);
+    thumbR.render(thumbScene, thumbCam);
+    thumbScene.remove(g);
+    return thumbCache[k] = thumbR.domElement.toDataURL();
+  }
+
+  // ---------- wardrobe UI ----------
+  const TABS = () => gender === 'f'
+    ? [['look', 'Hair & skin'], ['top', 'Tops'], ['bottom', 'Bottoms'], ['dress', 'Dresses'], ['outer', 'Outerwear'], ['shoes', 'Shoes'], ['bag', 'Bags'], ['acc', 'Jewellery & belts'], ['hat', 'Hats']]
+    : [['look', 'Hair & skin'], ['top', 'Tops'], ['bottom', 'Bottoms'], ['outer', 'Outerwear'], ['shoes', 'Shoes'], ['acc', 'Ties, watches & belts'], ['hat', 'Hats']];
+  let tab = 'top', pendingUnlock = null;
+  function renderTabs() { $('tabs').innerHTML = TABS().map(([k, n]) => `<button class="tab" role="tab" aria-selected="${k === tab}" data-tab="${k}" type="button">${n}</button>`).join(''); }
+  $('tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) { tab = b.dataset.tab; pendingUnlock = null; renderTabs(); renderTab(); } });
+  const section = (t, inner) => `<div class="section"><h3>${t}</h3>${inner}</div>`;
+  const chips = (list, key) => `<div class="chips">${list.map(([v, n, extra]) => `<button class="chip" data-acc="${key}" data-val="${v}" aria-pressed="${String(outfit[key] ?? '') === String(v)}" type="button">${extra || ''}${n}</button>`).join('')}</div>`;
+  function renderTab() {
+    let h = '';
+    if (tab === 'look') {
+      h += section('Skin tone', `<div class="swatches">${SKINS.map(([c, u, n], i) => `<button class="sw" style="background:${c}" data-skin="${i}" aria-pressed="${outfit.skin === i}" title="${n} · ${u} undertone" aria-label="${n}, ${u} undertone" type="button"></button>`).join('')}</div><p class="picks-note">Undertone matters: the stylist checks that colours near the face suit it.</p>`);
+      h += section('Hairstyle', `<div class="chips">${WARD[gender].hair.map(([k, n]) => `<button class="chip" data-hair="${k}" aria-pressed="${outfit.hair.style === k}" type="button">${n}</button>`).join('')}</div>`);
+      h += section('Hair colour', `<div class="swatches">${Object.entries(HAIRC).map(([k, [n, c]]) => `<button class="sw" style="background:${c}" data-haircolor="${k}" aria-pressed="${outfit.hair.color === k}" title="${n}" aria-label="${n}" type="button"></button>`).join('')}</div>`);
+    } else if (tab === 'acc') {
+      const dot = c => `<i class="dot" style="background:${c}"></i>`;
+      if (gender === 'f') {
+        h += section('Earrings', chips([['', 'None'], ['studs', 'Studs'], ['hoops', 'Hoops'], ['drops', 'Drops']], 'earrings'));
+        h += section('Necklace', chips([['', 'None'], ['chain', 'Fine chain'], ['pendant', 'Pendant'], ['pearls', 'Pearls'], ['statement', 'Statement']], 'necklace'));
+      } else {
+        h += section('Tie (with a shirt)', chips([['', 'None'], ...['navy', 'burgundy', 'charcoal', 'emerald', 'royal', 'black'].map(k => [k, C[k].name, dot(C[k].hex)])], 'tie'));
+        h += section('Watch', chips([['', 'None'], ['steel', 'Steel'], ['leather', 'Leather strap']], 'watch'));
+        h += section('Sunglasses', chips([['', 'None'], ['true', 'Aviators']], 'glasses'));
+      }
+      h += section('Belt', chips([['', 'None'], ['black', 'Black leather', dot('#1c1b1f')], ['brown', 'Brown leather', dot('#563726')], ['tan', 'Tan leather', dot('#b0804f')]], 'belt'));
+      h += section('Metal', `<div class="chips">${Object.entries(METALS).map(([k, [n, c]]) => `<button class="chip" data-metal="${k}" aria-pressed="${outfit.metal === k}" type="button"><i class="dot" style="background:${c}"></i>${n}</button>`).join('')}</div>`);
+    } else {
+      const slot = tab, sel = outfit[slot], list = WARD[gender][slot] || [];
+      h += section(TABS().find(t => t[0] === tab)[1], `<div class="grid">${slot !== 'shoes' ? `<button class="item" data-item="" aria-pressed="${!sel}" type="button"><span class="none">∅</span>None</button>` : ''}${list.map(id => { const d = itemDef(id); return `<button class="item ${isOwned(id) ? '' : 'locked'}" data-item="${id}" aria-pressed="${!!sel && sel.id === id}" type="button">${d.cost && !owned.has(id) ? `<span class="price"><i class="coin"></i>${d.cost}</span>` : ''}<img src="${thumbFor(slot, id)}" alt="">${d.name}</button>`; }).join('')}</div>`);
+      if (pendingUnlock) { const d = itemDef(pendingUnlock); h += `<div class="section"><div class="unlock">Unlock the <b>${d.name}</b> for ${d.cost} coins?<button class="pill cta" data-buy="${pendingUnlock}" type="button">Unlock</button></div></div>`; }
+      if (sel) {
+        const picks = bestColors(slot).map(p => p.key);
+        h += section('Colour', `<p class="picks-note"><b>★ Stylist picks</b> for this outfit: ${picks.map(k => C[k].name).join(', ')}</p><div class="swatches">${Object.values(C).map(c => `<button class="sw" style="background:${c.hex}" data-color="${c.key}" aria-pressed="${sel.color === c.key}" title="${c.name}" aria-label="${c.name}" type="button">${picks.includes(c.key) ? '<span class="pick">★</span>' : ''}</button>`).join('')}</div>`);
+        if (['top', 'bottom', 'dress', 'outer'].includes(slot)) h += section('Print', `<div class="chips">${PATTERNS.map(([k, n, cost]) => `<button class="chip" data-pattern="${k}" aria-pressed="${(sel.pattern || 'solid') === k}" type="button">${n}${cost && !owned.has('pat-' + k) ? ` · <i class="coin"></i>${cost}` : ''}</button>`).join('')}</div>`);
+      }
+    }
+    $('tabBody').innerHTML = h + '<div style="height:4px"></div>';
+  }
+  $('tabBody').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
+    if (d.skin != null) outfit.skin = +d.skin;
+    else if (d.hair) outfit.hair.style = d.hair;
+    else if (d.haircolor) outfit.hair.color = d.haircolor;
+    else if (d.metal) outfit.metal = d.metal;
+    else if (d.acc) outfit[d.acc] = d.val === '' ? null : d.val === 'true' ? true : d.val;
+    else if (d.buy) { const def = itemDef(d.buy); if (buy(d.buy, def.cost)) { pendingUnlock = null; equip(tab, d.buy); } return; }
+    else if (d.item != null) {
+      if (!d.item) { outfit[tab] = null; pendingUnlock = null; }
+      else if (!isOwned(d.item)) { pendingUnlock = d.item; renderTab(); return; }
+      else { pendingUnlock = null; equip(tab, d.item); return; }
+    } else if (d.color) outfit[tab].color = d.color;
+    else if (d.pattern) { const p = PATTERNS.find(x => x[0] === d.pattern); if (p[2] && !owned.has('pat-' + p[0]) && !buy('pat-' + p[0], p[2])) return; outfit[tab].pattern = d.pattern; }
+    refresh();
+  });
+  function equip(slot, id) {
+    const prev = outfit[slot];
+    outfit[slot] = { id, color: prev ? prev.color : ({ top: 'white', bottom: 'navy', dress: 'black', outer: 'camel', shoes: 'black', bag: 'black', hat: 'black' }[slot]), pattern: prev ? prev.pattern || 'solid' : 'solid' };
+    if (slot === 'dress') { outfit.top = null; outfit.bottom = null; }
+    if (slot === 'top' || slot === 'bottom') { outfit.dress = null; if (!outfit.top) outfit.top = { id: 'tee', color: 'white', pattern: 'solid' }; if (!outfit.bottom) outfit.bottom = { id: 'jeans', color: 'denim', pattern: 'solid' }; }
+    refresh();
+  }
+  function buy(id, cost) {
+    if (owned.has(id)) return true;
+    if (coins < cost) { toast(`You need ${cost - coins} more coins. Walk the runway to earn them.`); return false; }
+    coins -= cost; owned.add(id); persist(); $('coins').textContent = coins; toast('Unlocked!'); return true;
+  }
+
+  // ---------- stylist panel ----------
+  function renderStylist(a) {
+    const r = 34, circ = 2 * Math.PI * r, col = a.total >= 78 ? '#2e7d5b' : a.total >= 55 ? '#c2185b' : '#c0612b';
+    $('ring').innerHTML = `<circle cx="42" cy="42" r="${r}" fill="none" stroke="#efe6ec" stroke-width="8"/><circle cx="42" cy="42" r="${r}" fill="none" stroke="${col}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${circ * a.total / 100} ${circ}" transform="rotate(-90 42 42)"/><text x="42" y="46" text-anchor="middle" font-family="Bodoni Moda, Georgia, serif" font-size="24" font-weight="700" fill="#1d1720">${a.total}</text><text x="42" y="60" text-anchor="middle" font-size="8" fill="#74697a">${'★'.repeat(starsFor(a.total))}</text>`;
+    const areas = [['Colour', a.color], ...(challenge().brief.length ? [['Occasion', a.occasion]] : []), ['Styling', a.styling]];
+    $('areas').innerHTML = areas.map(([n, v]) => `<div class="area"><span>${n}</span><span class="bar"><i style="width:${v * 10}%"></i></span><b>${v.toFixed(1)}</b></div>`).join('');
+    $('strip').innerHTML = a.pieces.map(p => `<span style="background:${p.c.hex};flex:${p.area}" title="${p.c.name} ${slotName(p.slot)}"></span>`).join('');
+    $('harmony').innerHTML = `Colour scheme: <b>${a.harmony}</b>`;
+    $('notes').innerHTML = a.notes.slice(0, 6).map((n, i) => `<div class="note ${n.kind}"><span class="k">${n.kind === 'good' ? 'Works' : n.kind === 'warn' ? 'Fix this' : 'Tip'} · ${n.area}</span><span>${esc(n.text)}</span>${n.fix ? `<button data-fix="${i}" type="button">${fixPreview(n.fix)}${esc(n.fix.label)}</button>` : ''}</div>`).join('');
+    $('notes').onclick = e => { const b = e.target.closest('[data-fix]'); if (b) applyFix(a.notes[+b.dataset.fix].fix); };
+    $('badgeScore').textContent = a.total; $('badgeStars').textContent = '★'.repeat(starsFor(a.total)) + '☆'.repeat(5 - starsFor(a.total));
+  }
+  function renderBrief(a) {
+    const ch = challenge();
+    $('brief').innerHTML = `<span class="eyebrow">${ch.id === 'studio' ? 'Free play' : 'Client brief'}${stars[ch.id] ? ' · best ' + '★'.repeat(stars[ch.id]) : ''}</span><h2>${ch.title}</h2><p>${ch.blurb}</p>` +
+      (ch.brief.length ? `<div class="checks">${a.checks.map(c => `<span class="check ${c.ok ? 'ok' : ''}">${c.label}</span>`).join('')}${a.fails.map(f => `<span class="check no">${f}</span>`).join('')}</div>` : '');
+  }
+  function refresh() {
+    buildOutfit(outfit);
+    const col = STUDIO[challenge().scene] || STUDIO.studio; sweepMat.color.setHex(col); floorMat.color.setHex(col).lerp(new THREE.Color(0xffffff), 0.45);
+    const a = analyze(outfit);
+    renderStylist(a); renderBrief(a); renderTab(); $('coins').textContent = coins; persist();
+    return a;
+  }
+
+  // ---------- sheets ----------
+  document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => b.closest('.overlay').hidden = true));
+  document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => { if (e.target === o) o.hidden = true; }));
+  const SCENE_CSS = { studio: '#ece2e7', cafe: '#e9dccb', garden: '#cfe3c2', office: '#d9dee4', beach: 'linear-gradient(#bfe6f7 50%, #f1dfb8 50%)', gala: '#3a1420', winter: '#e3eaf2', festival: 'linear-gradient(#ffb26b, #e96f8a)' };
+  $('challengeBtn').addEventListener('click', () => {
+    $('challenges').innerHTML = challenges().map((c, i) => { const open = unlockedChallenge(i); return `<button class="ch ${open ? '' : 'locked'}" data-ch="${c.id}" type="button"><span class="scene" style="background:${SCENE_CSS[c.scene]}"></span><span class="body"><b>${c.title}</b><span>${open ? c.blurb : '🔒 Score 3★ on the previous brief to unlock'}</span><span>${c.reward ? `up to ${c.reward} coins · ` : ''}${stars[c.id] ? '★'.repeat(stars[c.id]) : 'Not played'}</span></span></button>`; }).join('');
+    $('challengeSheet').hidden = false;
+  });
+  $('challenges').addEventListener('click', e => { const b = e.target.closest('[data-ch]'); if (!b || b.classList.contains('locked')) return; challengeId = b.dataset.ch; $('challengeSheet').hidden = true; refresh(); toast(challenge().title + ': new brief'); });
+  $('lookbookBtn').addEventListener('click', () => {
+    $('looks').innerHTML = looks.length ? looks.map((l, i) => `<button class="look" data-look="${i}" type="button"><img src="${l.img}" alt="Saved look"><span>${esc(l.name)} · ${l.score} pts</span></button>`).join('') : '<p class="empty">No saved looks yet. Tap "Save look" on any outfit you love.</p>';
+    $('lookbookSheet').hidden = false;
+  });
+  $('looks').addEventListener('click', e => { const b = e.target.closest('[data-look]'); if (!b) return; const l = looks[+b.dataset.look]; if (l.o.gender !== gender) startWith(l.o.gender); outfit = JSON.parse(JSON.stringify(l.o)); $('lookbookSheet').hidden = true; refresh(); toast('Look loaded'); });
+  $('saveBtn').addEventListener('click', () => {
+    const a = analyze(outfit); renderer.render(scene, camera);
+    const c = document.createElement('canvas'); c.width = 240; c.height = 320; c.getContext('2d').drawImage(canvas, 0, 0, 240, 320);
+    looks.unshift({ o: JSON.parse(JSON.stringify(outfit)), score: a.total, img: c.toDataURL('image/jpeg', 0.8), name: challenge().id === 'studio' ? `Look ${looks.length + 1}` : challenge().title });
+    looks = looks.slice(0, 18); persist(); toast('Saved to your lookbook');
+  });
+  $('autoBtn').addEventListener('click', autoStyle);
+  $('switchBtn').addEventListener('click', () => { $('welcome').hidden = false; });
+
+  // ---------- runway: the same 3D scene, turntable under flashbulbs ----------
+  const JUDGES = [['Mila Rossi', 'colour', 'color'], ['Jules Okafor', 'occasion', 'occasion'], ['Ines Laurent', 'styling', 'styling']];
+  function runway() {
+    const a = analyze(outfit), ch = challenge(), st = starsFor(a.total), prev = stars[ch.id] || 0;
+    const reward = ch.reward ? Math.round(ch.reward * a.total / 100) + (st > prev ? st * 10 : 0) : Math.round(a.total / 5);
+    $('runway').hidden = false; host = $('runwayStage'); host.prepend(canvas); resize();
+    const oldSweep = sweepMat.color.getHex(); sweepMat.color.setHex(0x1e1622); floorMat.color.setHex(0x1e1622);
+    want.yaw = 0; frameModel(); want.dist *= 1.05; spin = 0.9; idleT = 0;
+    const stage = $('runwayStage'); stage.querySelectorAll('.flash').forEach(f => f.remove());
+    for (let i = 0; i < 10; i++) setTimeout(() => { const f = document.createElement('span'); f.className = 'flash'; f.style.left = (6 + Math.random() * 88) + '%'; f.style.top = (25 + Math.random() * 55) + '%'; stage.appendChild(f); setTimeout(() => f.remove(), 600); }, 300 + i * 260);
+    const say = area => { const n = a.notes.find(n => n.area === area && n.kind === 'warn') || a.notes.find(n => n.area === area); return n ? n.text : area === 'occasion' ? 'A free-styled look, full of personality.' : 'Lovely.'; };
+    const scores = [a.color, ch.brief.length ? a.occasion : (a.color + a.styling) / 2, a.styling];
+    $('judges').innerHTML = JUDGES.map(([who, label, area], i) => `<div class="judge" id="j${i}"><span class="who2">${who} · ${label}</span><span class="sc">${scores[i].toFixed(1)}</span><span class="say">${esc(say(area))}</span></div>`).join('');
+    $('verdict').className = 'verdict'; $('verdict').innerHTML = '';
+    JUDGES.forEach((_, i) => setTimeout(() => $('j' + i).classList.add('in'), 2600 + i * 700));
+    setTimeout(() => {
+      spin = 0.2;
+      if (ch.id !== 'studio') stars[ch.id] = Math.max(prev, st);
+      coins += reward; persist(); $('coins').textContent = coins;
+      const list = challenges(), next = list.findIndex(c => c.id === ch.id) + 1, nextOpen = next < list.length && unlockedChallenge(next) && ch.id !== 'studio';
+      $('verdict').innerHTML = `<h2>${a.total >= 90 ? 'Iconic.' : a.total >= 78 ? 'Stunning!' : a.total >= 64 ? 'Runway ready' : a.total >= 48 ? 'Almost there' : 'Back to the studio'}</h2><span class="stars">${'★'.repeat(st)}${'☆'.repeat(5 - st)}</span><p>${a.total} points · +${reward} coins${st >= 3 && prev < 3 && nextOpen ? ' · next brief unlocked!' : ''}</p><div class="row"><button class="pill" id="rwBack" type="button">Back to the studio</button>${nextOpen ? `<button class="pill ghost" id="rwNext" type="button">Next brief: ${list[next].title}</button>` : ''}</div>`;
+      $('verdict').classList.add('in'); if (camera.aspect > 0.9) want.look.x = -B.height * 0.24; else { want.look.y += B.height * 0.32; want.dist *= 1.4; }   // make room for the verdict
+      const back = () => { $('runway').hidden = true; spin = 0; host = stageEl; stageEl.prepend(canvas); sweepMat.color.setHex(oldSweep); floorMat.color.setHex(oldSweep).lerp(new THREE.Color(0xffffff), 0.45); resize(); frameModel(); want.yaw = 0.3; };
+      $('rwBack').onclick = () => { back(); refresh(); };
+      if ($('rwNext')) $('rwNext').onclick = () => { back(); challengeId = list[next].id; refresh(); };
+    }, 2600 + 3 * 700 + 300);
+  }
+  $('runwayBtn').addEventListener('click', runway);
+  let toastT = 0;
+  function toast(t) { const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 2200); }
+
+  // ---------- start ----------
+  function startWith(gd) {
+    setGenderBody(gd);
+    outfit = outfits[gd] || JSON.parse(JSON.stringify(DEFAULTS[gd]));
+    if (!challenges().some(c => c.id === challengeId)) challengeId = 'studio';
+    tab = 'top'; pendingUnlock = null;
+    renderTabs(); frameModel(); want.yaw = 0.3;
+  }
+  // previews for the welcome screen: render both models
+  function previewOf(gd) {
+    setGenderBody(gd);
+    const o = gd === 'f' ? { ...DEFAULTS.f, dress: { id: 'sundress', color: 'blush', pattern: 'floral' }, top: null, bottom: null, shoes: { id: 'pumps', color: 'camel' }, bag: { id: 'clutch', color: 'camel' }, earrings: 'hoops' }
+      : { ...DEFAULTS.m, top: { id: 'shirt', color: 'white', pattern: 'solid' }, bottom: { id: 'suitpants', color: 'navy', pattern: 'solid' }, outer: { id: 'blazer', color: 'navy', pattern: 'solid' }, shoes: { id: 'loafers', color: 'chocolate' }, tie: 'burgundy', watch: 'steel', belt: 'brown' };
+    buildOutfit(o);
+    host = stageEl; resize();
+    const prevSize = renderer.getSize(new THREE.Vector2());
+    renderer.setSize(360, 480, false); camera.aspect = 3 / 4; camera.updateProjectionMatrix();
+    const h = B.height; camera.position.set(Math.sin(0.35) * h * 2.4, h * 0.56, Math.cos(0.35) * h * 2.4); camera.lookAt(0, h * 0.52, 0);
+    renderer.render(scene, camera);
+    const url = canvas.toDataURL('image/jpeg', 0.85);
+    renderer.setSize(prevSize.x, prevSize.y, false);
+    return url;
+  }
+  $('prevF').src = previewOf('f'); $('prevM').src = previewOf('m');
+  document.querySelectorAll('[data-gender]').forEach(b => b.addEventListener('click', () => { startWith(b.dataset.gender); $('welcome').hidden = true; resize(); refresh(); }));
+  setGenderBody('f'); resize();
+  requestAnimationFrame(loop);
+
+  window.__muse = { start: g => { startWith(g); $('welcome').hidden = true; resize(); refresh(); }, get outfit() { return outfit; }, set(o) { outfit = o; refresh(); }, analyze: () => analyze(outfit), setChallenge(id) { challengeId = id; refresh(); }, autoStyle, runway, applyFix, view: i => VIEWS[i](), snap: () => { idleT = -100; yaw = want.yaw; dist = want.dist; look.copy(want.look); } };
+})();
+</script>
+</body>
+</html>
