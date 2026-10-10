@@ -158,12 +158,19 @@ h2.title { font-family: var(--display); font-style: italic; font-weight: 800; fo
 /* touch controls */
 #touch { position: fixed; inset: auto 0 0 0; z-index: 7; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); pointer-events: none; }
 #touch .grp { display: flex; gap: 12px; align-items: flex-end; pointer-events: auto; }
+#touch .grp:last-child { margin-left: auto; }
 .tb { width: 82px; height: 82px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); background: rgba(0,0,0,.35); font-family: var(--display); font-weight: 800; font-size: 15px; letter-spacing: .05em; display: grid; place-items: center; touch-action: none; backdrop-filter: blur(3px); }
 .tb.sm { width: 64px; height: 64px; font-size: 12px; }
 .tb.down { background: rgba(255,255,255,.35); }
 .tb.gas { border-color: rgba(120,255,140,.7); }
 .tb.nos { border-color: var(--cyan); color: var(--cyan); }
 .tb svg { width: 34px; height: 34px; }
+#knob { position: fixed; z-index: 8; pointer-events: none; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 2px solid rgba(255,255,255,.45); background: rgba(0,0,0,.18); }
+#knob i { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(255,255,255,.75); box-shadow: 0 0 14px rgba(255,255,255,.5); }
+#steerMeter { position: fixed; z-index: 7; left: 50%; transform: translateX(-50%); bottom: max(16px, env(safe-area-inset-bottom)); width: 170px; height: 34px; border-radius: 17px; background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.25); pointer-events: auto; touch-action: none; }
+#steerMeter::before { content: ""; position: absolute; left: 50%; top: 6px; bottom: 6px; width: 2px; background: rgba(255,255,255,.35); }
+#steerMeter i { position: absolute; top: 5px; left: 50%; width: 24px; height: 24px; margin-left: -12px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+#steerMeter span { position: absolute; left: 0; right: 0; top: -18px; text-align: center; font: 600 11px var(--ui); color: rgba(255,255,255,.8); text-shadow: 0 1px 3px #000; }
 body.touch .br { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 96px); }
 @media (max-height: 520px) { body.touch .rpm { display: none; } body.touch .speed { font-size: 40px; } body.touch .meter { width: 150px; } body.touch .br { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 84px); } body.touch #mini { width: 96px; height: 96px; } }
 body.touch .board { display: none; }
@@ -216,8 +223,10 @@ body.touch .board { display: none; }
   <div class="center" id="keys" hidden><span class="gasKey"><b>Accelerate</b> hold <kbd>↑</kbd> or <kbd>W</kbd></span><span><b>Steer</b> <kbd>←</kbd><kbd>→</kbd> or <kbd>A</kbd><kbd>D</kbd></span><span><b>Brake</b> <kbd>↓</kbd> or <kbd>S</kbd></span><span><b>Drift</b> <kbd>Space</kbd> while turning</span><span><b>Nitro</b> <kbd>Shift</kbd></span></div>
 </div>
 
+<div id="knob" hidden><i></i></div>
+<div id="steerMeter" hidden><span id="steerHint">Tap to centre</span><i></i></div>
 <div id="touch" hidden>
-  <div class="grp">
+  <div class="grp" id="steerBtns">
     <button class="tb" data-k="left" aria-label="Steer left"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 4 6 12l9 8z"/></svg></button>
     <button class="tb" data-k="right" aria-label="Steer right"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m9 4 9 8-9 8z"/></svg></button>
   </div>
@@ -243,6 +252,7 @@ body.touch .board { display: none; }
       <button class="btn" id="bGarage">Garage <small id="garageSub">5 cars</small></button>
     </div>
     <div class="setting"><span>Rivals</span><div class="row" id="diffRow"><button class="chip" data-d="0">Easy</button><button class="chip" data-d="1">Pro</button><button class="chip" data-d="2">Legend</button></div></div>
+    <div class="setting steerSet"><span>Phone steering</span><div class="row"><button class="chip" data-steer="buttons">Buttons</button><button class="chip" data-steer="tilt">Tilt</button><button class="chip" data-steer="drag">Drag</button><button class="chip" data-inv>Invert tilt</button></div></div>
     <div class="setting"><span>Options</span><div class="row"><button class="chip" id="soundChip">Sound</button><button class="chip" id="autoChip">Auto-gas</button><button class="chip" id="qualChip">High detail</button></div></div>
     <p class="foot"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> or <kbd>WASD</kbd> drive · <kbd>Space</kbd> drift · <kbd>Shift</kbd> nitro · <kbd>C</kbd> camera · <kbd>R</kbd> reset · <kbd>P</kbd> pause. Gamepads work too.</p>
   </div>
@@ -281,6 +291,7 @@ body.touch .board { display: none; }
       <button class="btn" id="pRestart">Restart race</button>
       <button class="btn" id="pQuit">Quit to menu</button>
     </div>
+    <div class="setting steerSet"><span>Phone steering</span><div class="row"><button class="chip" data-steer="buttons">Buttons</button><button class="chip" data-steer="tilt">Tilt</button><button class="chip" data-steer="drag">Drag</button><button class="chip" data-inv>Invert tilt</button></div></div>
     <div class="setting"><span>Options</span><div class="row"><button class="chip" id="soundChip2">Sound</button><button class="chip" id="autoChip2">Auto-gas</button></div></div>
   </div>
 </div>
@@ -341,7 +352,7 @@ body.touch .board { display: none; }
   // ---------- save data ----------
   function load(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
   function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-  const store = Object.assign({ coins: 800, owned: ['volt', 'raptor'], car: 'volt', paint: {}, best: {}, diff: 1, sound: true, autoGas: isTouch, hq: !isTouch, laps: 3, track: 0, champ: null }, load('apex-save', {}));
+  const store = Object.assign({ coins: 800, owned: ['volt', 'raptor'], car: 'volt', paint: {}, best: {}, diff: 1, sound: true, autoGas: isTouch, hq: !isTouch, steer: 'buttons', invTilt: false, laps: 3, track: 0, champ: null }, load('apex-save', {}));
   const persist = () => save('apex-save', store);
 
   // ---------- cars ----------
@@ -855,11 +866,55 @@ body.touch .board { display: none; }
     const k = b.dataset.k, on = e => { e.preventDefault(); touch[k] = true; b.classList.add('down'); initAudio(); }, off = e => { e.preventDefault(); touch[k] = false; b.classList.remove('down'); };
     b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('pointerleave', off);
   });
+  // ---------- phone steering: tilt and drag ----------
+  const tilt = { raw: null, center: 0, got: false }, drag = { id: null, x0: 0, y0: 0, x: 0 };
+  // landscape phones turn like a wheel around the screen's long axis (beta); portrait uses gamma
+  function tiltAngle(e) {
+    const a = (screen.orientation && typeof screen.orientation.angle === 'number') ? screen.orientation.angle : (window.orientation || 0);
+    return a === 90 ? e.beta : (a === -90 || a === 270) ? -e.beta : a === 180 ? -e.gamma : e.gamma;
+  }
+  addEventListener('deviceorientation', e => { if (e.beta == null || e.gamma == null) return; tilt.raw = tiltAngle(e); if (!tilt.got) { tilt.got = true; tilt.center = tilt.raw; } });
+  function analogSteer() {
+    if (store.steer === 'tilt') { if (tilt.raw == null) return null; let d = tilt.raw - tilt.center; if (d > 180) d -= 360; if (d < -180) d += 360; const v = Math.sign(d) * Math.max(0, Math.abs(d) - 2) / 20; return clamp(store.invTilt ? -v : v, -1, 1); }
+    if (store.steer === 'drag') return drag.id == null ? 0 : clamp((drag.x - drag.x0) / Math.max(60, innerWidth * 0.11), -1, 1);
+    return null;
+  }
+  async function chooseSteer(m) {
+    // iPhones ask permission for motion sensors, and only from a tap
+    if (m === 'tilt' && typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      try { if (await DeviceOrientationEvent.requestPermission() !== 'granted') { steerFallback('Tilt permission was refused'); return; } } catch (e) { steerFallback('Tilt needs permission'); return; }
+    }
+    store.steer = m; persist(); syncSteer();
+    if (m === 'tilt') { tilt.got = false; setTimeout(() => { if (store.steer === 'tilt' && !tilt.got) steerFallback('This browser is not sharing tilt here'); }, 2000); toast('Tilt the phone like a wheel'); }
+    if (m === 'drag') toast('Put a thumb on the left side and slide');
+  }
+  function steerFallback(msg) { store.steer = 'drag'; persist(); syncSteer(); toast(msg + ', using drag'); }
+  function syncSteer() {
+    document.querySelectorAll('.steerSet').forEach(el => el.hidden = !isTouch);
+    document.querySelectorAll('[data-steer]').forEach(b => b.setAttribute('aria-pressed', b.dataset.steer === store.steer));
+    document.querySelectorAll('[data-inv]').forEach(b => { b.setAttribute('aria-pressed', !!store.invTilt); b.hidden = store.steer !== 'tilt'; });
+    $('steerBtns').hidden = store.steer !== 'buttons';
+    $('steerHint').textContent = store.steer === 'tilt' ? 'Tap to centre' : 'Drag on the left';
+  }
+  document.querySelectorAll('[data-steer]').forEach(b => b.onclick = () => chooseSteer(b.dataset.steer));
+  document.querySelectorAll('[data-inv]').forEach(b => b.onclick = () => { store.invTilt = !store.invTilt; persist(); syncSteer(); });
+  $('steerMeter').addEventListener('pointerdown', e => { e.preventDefault(); if (store.steer === 'tilt' && tilt.raw != null) { tilt.center = tilt.raw; toast('Steering centred'); } });
+  canvas.addEventListener('pointerdown', e => {
+    if (!isTouch || store.steer !== 'drag' || drag.id != null || (state !== 'race' && state !== 'countdown')) return;
+    if (e.clientX > innerWidth * 0.62) return;   // the right side is for the pedals
+    drag.id = e.pointerId; drag.x0 = drag.x = e.clientX; drag.y0 = e.clientY;
+    try { canvas.setPointerCapture(e.pointerId); } catch (er) {}
+    const k = $('knob'); k.hidden = false; k.style.left = drag.x0 + 'px'; k.style.top = drag.y0 + 'px'; k.firstChild.style.transform = 'translateX(0px)'; initAudio();
+  });
+  canvas.addEventListener('pointermove', e => { if (e.pointerId !== drag.id) return; drag.x = e.clientX; $('knob').firstChild.style.transform = `translateX(${clamp(drag.x - drag.x0, -60, 60)}px)`; });
+  const dragEnd = e => { if (e.pointerId !== drag.id) return; drag.id = null; $('knob').hidden = true; };
+  canvas.addEventListener('pointerup', dragEnd); canvas.addEventListener('pointercancel', dragEnd);
   function playerInput() {
     const k = c => keys.has(c);
     let steer = (k('ArrowRight') || k('KeyD') || touch.right ? 1 : 0) - (k('ArrowLeft') || k('KeyA') || touch.left ? 1 : 0);
     let gas = k('ArrowUp') || k('KeyW') || touch.gas ? 1 : 0, brake = k('ArrowDown') || k('KeyS') || touch.brake ? 1 : 0;
     let nitro = k('ShiftLeft') || k('ShiftRight') || k('KeyN') || !!touch.nitro, drift = k('Space') || !!touch.drift;
+    if (isTouch && !steer) { const a = analogSteer(); if (a !== null) steer = a; }
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     for (const gp of pads) { if (!gp) continue; const ax = gp.axes[0] || 0; if (Math.abs(ax) > 0.12) steer = ax; const rt = gp.buttons[7], lt = gp.buttons[6]; if (rt && rt.value > 0.05) gas = rt.value; if (lt && lt.value > 0.05) brake = lt.value; if (gp.buttons[0] && gp.buttons[0].pressed) nitro = true; if ((gp.buttons[2] && gp.buttons[2].pressed) || (gp.buttons[5] && gp.buttons[5].pressed)) drift = true; if (gp.buttons[9] && gp.buttons[9].pressed && state === 'race') pause(); break; }
     if (store.autoGas && !brake) gas = Math.max(gas, 1);
@@ -908,6 +963,7 @@ body.touch .board { display: none; }
     $('pTitle').textContent = T.def.name; camMode = camMode || 0; snapCam = true;
     buildRpm();
     idleT = 0; $('keys').hidden = isTouch;
+    syncSteer(); $('steerMeter').hidden = !(isTouch && store.steer !== 'buttons'); if (tilt.raw != null) tilt.center = tilt.raw; drag.id = null; $('knob').hidden = true;
     if (isTouch && innerHeight > innerWidth) setTimeout(() => toast('Turn sideways for a wider view'), 300);
   }
   function setupGhost() {
@@ -1067,6 +1123,7 @@ body.touch .board { display: none; }
     $('driftBar').firstChild.style.background = tier ? `rgb(${tierCol[tier].map(v => v * 255 | 0).join(',')})` : '#6ea8ff';
     $('driftLbl').textContent = tier ? ['', 'DRIFT · BOOST READY', 'DRIFT · SUPER', 'DRIFT · ULTRA'][tier] : 'DRIFT';
     $('wrong').hidden = !(c.wrong > 1.2 && state === 'race');
+    if (!$('steerMeter').hidden) $('steerMeter').lastChild.style.transform = `translateX(${(c.steer * 70).toFixed(1)}px)`;
     if (hudT > 0) return; hudT = 0.1;
     const st = standings(), pos = st.indexOf(c) + 1;
     $('hPos').innerHTML = mode === 'trial' ? `<small>TIME TRIAL</small>` : `${pos}<small>/${racers.length}</small>`;
@@ -1148,7 +1205,7 @@ body.touch .board { display: none; }
     } else $('rNext').textContent = 'Race again';
     $('rMenu').textContent = 'Main menu';
     $('rTable').innerHTML = rows.join('');
-    showScreen('sResults'); $('touch').hidden = true; $('keys').hidden = true; $('hud').hidden = true; $('speedfx').style.opacity = 0; refreshCoins();
+    showScreen('sResults'); $('touch').hidden = true; $('keys').hidden = true; $('hud').hidden = true; $('steerMeter').hidden = true; $('knob').hidden = true; $('speedfx').style.opacity = 0; refreshCoins();
   }
 
   // ---------- menus ----------
@@ -1172,8 +1229,8 @@ body.touch .board { display: none; }
     $('garageSub').textContent = `${store.owned.length} of ${CARS.length} owned`;
   }
   function toMenu() {
-    state = 'menu'; racing = false; clearRace(); $('keys').hidden = true; $('hud').hidden = true; $('touch').hidden = true; $('speedfx').style.opacity = 0;
-    if (!T) buildTrack(store.track || 0); showPreview(store.car); showScreen('sMenu'); refreshCoins(); syncChips(); mode = 'quick'; setTimeout(lobbyPresence, 0);
+    state = 'menu'; racing = false; clearRace(); $('keys').hidden = true; $('hud').hidden = true; $('touch').hidden = true; $('speedfx').style.opacity = 0; $('steerMeter').hidden = true; $('knob').hidden = true;
+    if (!T) buildTrack(store.track || 0); showPreview(store.car); showScreen('sMenu'); refreshCoins(); syncChips(); syncSteer(); mode = 'quick'; setTimeout(lobbyPresence, 0);
   }
   let trackMode = 'quick', selTrack = store.track || 0;
   function openTracks(m) {
@@ -1369,7 +1426,8 @@ body.touch .board { display: none; }
       const pr = p.presence, st = Array.isArray(pr.st) ? pr.st : null;
       if (pr.fin != null && num(pr.fin, 0) > 0 && !c.finished) { c.finished = true; c.finishTime = num(pr.fin); if (state === 'race' && !player.finished) toast(`${cleanNick(c.name)} finished`); }
       if (pr.best != null) c.bestLap = num(pr.best, Infinity);
-      if (!st || st.length < 8) continue;
+      if (!st || st.length < 8) { if (c.hadState && !c.finished && state === 'race') { c.left = true; c.mesh.group.visible = false; toast(`${cleanNick(c.name)} left the race`); } continue; }
+      c.hadState = true;
       if (p.updatedAt !== c.netAt) { c.netAt = p.updatedAt; c.netT = now; }
       const age = Math.min(0.3, (now - (c.netT || now)) / 1000), h = num(st[2]), vf = clamp(num(st[3]), -20, 140);
       const tx = num(st[0]) + Math.sin(h) * vf * age, tz = num(st[1]) + Math.cos(h) * vf * age;
@@ -1393,7 +1451,7 @@ body.touch .board { display: none; }
     $('rMode').textContent = `Online race · ${T.def.name}`;
     $('rNext').innerHTML = NET.host ? 'Back to the race lobby <small>Start the next one</small>' : 'Back to the race lobby'; $('rMenu').textContent = 'Leave online';
     renderOnlineTable();
-    showScreen('sResults'); $('touch').hidden = true; $('keys').hidden = true; $('hud').hidden = true; $('speedfx').style.opacity = 0; refreshCoins();
+    showScreen('sResults'); $('touch').hidden = true; $('keys').hidden = true; $('hud').hidden = true; $('steerMeter').hidden = true; $('knob').hidden = true; $('speedfx').style.opacity = 0; refreshCoins();
   }
   function renderOnlineTable() {
     const order = standings(), place = order.indexOf(player) + 1;
@@ -1403,7 +1461,7 @@ body.touch .board { display: none; }
     $('rTable').innerHTML = order.map((c, i) => `<tr class="${c.isPlayer ? 'me' : ''}"><td>${i + 1}</td><td>${esc(cleanNick(c.name))}<br><small style="color:var(--muted)">${esc(c.def.name)}</small></td><td class="t">${c.left ? 'Left' : c.finished ? fmt(c.finishTime) : 'Racing… lap ' + clamp(Math.floor(c.prog / T.N) + 1, 1, laps)}<br><small>best ${fmt(c.bestLap)}</small></td></tr>`).join('');
   }
   function backToRoom() {
-    state = 'menu'; racing = false; clearRace(); $('keys').hidden = true; $('hud').hidden = true; $('touch').hidden = true; $('speedfx').style.opacity = 0;
+    state = 'menu'; racing = false; clearRace(); $('keys').hidden = true; $('hud').hidden = true; $('touch').hidden = true; $('speedfx').style.opacity = 0; $('steerMeter').hidden = true; $('knob').hidden = true;
     racePresence({ st: null, fin: null, best: null }); mode = 'quick';
     if (!T || T.ti !== NET.track) buildTrack(NET.track); showPreview(store.car);
     if (NET.race) { showScreen('sRoom'); renderRoom(); } else openOnline();
