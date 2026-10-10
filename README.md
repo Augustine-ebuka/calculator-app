@@ -4,6 +4,7 @@ The home page (`index.html`) is the Game Room: it links to the calculator and th
 - `calculator/` holds the calculator: index.html, style.css and script.js
 - `basketball/` holds Hoop Shot 3D
 - `forest/` holds Forest Range
+- `skyfall/` holds Skyfall Defense
 
 ## Calculator (calculator/)
 The calculator consists of three files: index.html, style.css and script.js
@@ -52,3 +53,13 @@ A first-person 3D target shooting game in a forest clearing, built with three.js
 - **Muzzle fire:** every shot throws a flame and flash from the muzzle sized to the gun, lights up the scene, and leaves a drifting smoke puff. Through the scope you see the blast glow.
 - **Controls:** drag to aim, click/tap or Space to fire, mouse wheel or Z for the scope, Shift to hold breath, R to reload, 1–5 to pick a target, G for the gun locker, Q/E to switch guns, and arrow keys to nudge aim by a quarter mil.
 - **On phones:** hold the phone sideways for the best view. Settings sit behind the Menu button, the target and scope buttons form a slim strip on the left, and coach tips fade after a few seconds. You can aim with one finger and shoot with another at the same time, using the Fire button or a quick tap anywhere. Phones get a lighter forest so the game stays smooth.
+
+## Skyfall Defense (skyfall/)
+A vertical arcade shooter. Meteors and alien raiders fall on a city at night; you slide a gunship left and right and its guns fire on their own.
+
+- **Move:** drag anywhere (your finger stays off the ship), move the mouse, or use ← → / A D. **Bomb:** red button, Space or B. **Pause:** the II button, P or Esc.
+- **Levels get faster:** each level everything falls about 13% faster, spawns come quicker, and new enemies join: alien drones that shoot back (level 2+), divers that lock on and dive at you (3+), armoured hexes (4+). Every 5th level is a mothership boss with bullet patterns that gets angrier below 40% health.
+- **Power-ups** drop from kills and float down on parachutes: Bomb (clears the sky), Spread shot, Plasma laser, Rapid fire, Shield, Repair and Time warp.
+- **Upgrades:** after each level pick 1 of 3 permanent upgrades (damage, fire rate, extra barrels, wingman drones, tractor beam, critical hits, bomb bay, city shield, longer power-ups).
+- **Combo multiplier** up to ×5 for kills in quick succession, and a city bonus for every wave you clear with the shield intact. Your best score is saved.
+- Meteors glow and trail fire as they burn through the atmosphere, big ones split into shards, and explosions shake the screen. Sound effects and a driving bass soundtrack are made live in the browser, and the music speeds up as you level up.
