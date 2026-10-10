@@ -5,6 +5,7 @@ The home page (`index.html`) is the Game Room: it links to the calculator and th
 - `basketball/` holds Hoop Shot 3D
 - `forest/` holds Forest Range
 - `skyfall/` holds Skyfall Defense
+- `muse/` holds Runway Muse
 
 ## Calculator (calculator/)
 The calculator consists of three files: index.html, style.css and script.js
@@ -63,3 +64,11 @@ A vertical arcade shooter. Meteors and alien raiders fall on a city at night; yo
 - **Upgrades:** after each level pick 1 of 3 permanent upgrades (damage, fire rate, extra barrels, wingman drones, tractor beam, critical hits, bomb bay, city shield, longer power-ups).
 - **Combo multiplier** up to ×5 for kills in quick succession, and a city bonus for every wave you clear with the shield intact. Your best score is saved.
 - Meteors glow and trail fire as they burn through the atmosphere, big ones split into shards, and explosions shake the screen. Sound effects and a driving bass soundtrack are made live in the browser, and the music speeds up as you level up.
+
+## Runway Muse (muse/)
+A fashion styling game. Dress a model from a wardrobe of tops, bottoms, dresses, outerwear, shoes, bags, jewellery, hats, belts, hairstyles and makeup, in 25 colours and six prints, and a built-in stylist tells you how the look is working.
+
+- **The stylist** reads your outfit with real colour theory: it groups colours into families, recognises monochrome, analogous, complementary and triadic schemes, flags clashing pairs, too many colours or prints, missing neutrals, flat contrast, and tops that wash out against your skin tone. It also checks formality (an evening gown with sneakers), completeness (no shoes, no accessories) and finishing touches (matching shoes and bag, a belt at the waist). Most problems come with a one-tap **Fix** that applies the stylist's best suggestion, and every colour picker shows the stylist's ★ top three colours for the current outfit.
+- **Client briefs:** Weekend Coffee Date, Garden Wedding Guest (no white, that's for the bride), Office Power Look, Beach Day, Gala Night, Winter in the City, Music Festival and Job Interview, each with a live checklist. Score 3 stars to unlock the next brief. Free Studio is always open.
+- **Runway:** walk the catwalk under camera flashes while three judges score colour, occasion and styling. You earn coins to unlock premium pieces and prints.
+- **Style me** builds a complete look for the current brief, and **Lookbook** keeps your favourite outfits. Progress is saved in your browser.
