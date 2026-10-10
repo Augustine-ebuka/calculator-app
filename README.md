@@ -6,6 +6,7 @@ The home page (`index.html`) is the Game Room: it links to the calculator and th
 - `forest/` holds Forest Range
 - `skyfall/` holds Skyfall Defense
 - `muse/` holds Runway Muse
+- `race/` holds Apex Rush
 
 ## Calculator (calculator/)
 The calculator consists of three files: index.html, style.css and script.js
@@ -83,3 +84,14 @@ A 3D fashion styling game. Start by choosing **Her** or **Him**, then dress a 3D
 - **Runway:** the model turns under camera flashes while three judges score colour, occasion and styling. You earn coins to unlock premium pieces and prints.
 - **Style me** builds a complete look for the current brief, and **Lookbook** saves snapshots of your favourite outfits. Progress is saved in your browser.
 - The earlier flat version is still available at `muse/2d.html`.
+
+## Apex Rush (race/)
+A 3D street racing game built with three.js. Six cars start on the grid, the five start lights go out, and you race three laps against five AI rivals.
+
+- **Three circuits:** Coastline GP (daytime island track with pine forests and the sea), Dune Canyon (sunset desert between red mesas) and Neon Harbor (night street circuit lit by neon barriers and skyscrapers). Each has kerbs in the corners, barriers, grandstands, billboards and boost pads on the straights.
+- **Driving:** hold Space while steering through a corner to drift. The longer the drift, the bigger the boost when you let go (blue, orange, then purple sparks). Shift fires the nitro, and drifting tops it up. Running wide onto the grass or sand slows you down, and hitting a wall costs speed.
+- **Five cars** with different top speed, acceleration, handling and nitro: Volt S (electric), Raptor GT, Dune R (rally, fast off-road), Titan V8 (muscle) and Mirage X (hypercar). Win coins to buy them and pick from 12 paint colours in the Garage.
+- **Modes:** Quick race (choose track and 2, 3 or 5 laps), Championship (all three tracks, F1-style points and a title bonus) and Time trial, where you race a see-through ghost of your best lap.
+- **Rivals:** Easy, Pro or Legend. AI drivers take the inside of corners, brake for the bends, overtake slower cars and use nitro on the straights.
+- **Feel:** a chase camera that swings with your slides, a far chase camera and a bumper camera; speed lines, camera shake, tyre smoke, sparks and nitro flames; a live engine sound that changes gear (an electric whine for the Volt), tyre squeal and wind noise.
+- **Controls:** arrows or WASD, Space drift, Shift nitro, C camera, R back on track, P pause. Gamepads work. On phones there are touch buttons with optional auto-gas; landscape works best.
