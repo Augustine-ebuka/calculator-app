@@ -138,11 +138,38 @@ dialog::backdrop { background: rgba(8, 12, 22, .6); }
 .msg { font-size: 14px; margin: 0; }
 .msg.err { color: var(--accent); }
 .msg.ok { color: var(--good); }
-#player { width: min(980px, calc(100vw - 24px)); }
-#player .frame { aspect-ratio: 16 / 9; width: 100%; max-width: 100%; background: #000; }
-#player iframe { width: 100%; height: 100%; border: 0; display: block; }
-#player .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; flex-wrap: wrap; }
-#player .bar b { min-width: 0; overflow-wrap: anywhere; }
+/* study view: the player fills the page, with notes under it and the queue beside it */
+#study { position: fixed; inset: 0; z-index: 50; background: var(--bg); overflow-y: auto; padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(16px, env(safe-area-inset-left, 0px)); }
+.study { max-width: 1320px; margin: 0 auto; padding-block: 16px 40px; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 22px; align-items: start; }
+.studybar { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.screen { position: relative; aspect-ratio: 16 / 9; width: 100%; max-width: 100%; background: #000; border-radius: 14px; overflow: hidden; }
+.screen iframe, .screen > div { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.blocked { position: absolute; inset: 0; display: grid; place-content: center; gap: 12px; text-align: center; padding: 20px; color: #fff; background: rgba(8, 12, 22, .92); }
+.blocked p { margin: 0; color: #c9d1e3; max-width: 46ch; }
+.nowinfo { display: grid; gap: 8px; margin-top: 14px; }
+.nowinfo h2 { margin: 0; font-family: var(--display); font-size: clamp(20px, 2.6vw, 28px); line-height: 1.2; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.resume { font: 500 13px var(--mono); color: var(--muted); }
+.notes { display: grid; gap: 6px; margin-top: 16px; }
+.notes label { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.notes textarea { min-height: 130px; resize: vertical; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 12px 14px; font: 15px/1.55 var(--body); color: var(--ink); }
+.notes small { color: var(--muted); font-size: 12px; }
+.queue { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 10px; position: sticky; top: 16px; }
+.queue h3 { margin: 0; font-family: var(--display); font-size: 18px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.queue label { font: 600 13px var(--body); color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+.qlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 70vh; overflow: auto; }
+.qitem { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 10px; align-items: start; border: 0; background: none; text-align: left; padding: 6px; border-radius: 10px; cursor: pointer; width: 100%; }
+.qitem:hover { background: color-mix(in srgb, var(--mark) 8%, transparent); }
+.qitem[aria-current="true"] { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.qthumb { position: relative; aspect-ratio: 16 / 9; width: 100%; border-radius: 8px; overflow: hidden; background: var(--line); }
+.qthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.qthumb .dur { position: absolute; right: 4px; bottom: 6px; background: rgba(10,14,24,.86); color: #fff; font: 500 11px var(--mono); padding: 1px 5px; border-radius: 4px; }
+.prog { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255,255,255,.35); }
+.prog i { display: block; height: 100%; background: var(--accent); }
+.qtext { font-size: 14px; line-height: 1.35; min-width: 0; overflow-wrap: anywhere; }
+.qtext small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.qtext .tick { color: var(--good); font-weight: 600; }
+.thumb .prog { height: 4px; }
+@media (max-width: 960px) { .study { grid-template-columns: minmax(0, 1fr); } .queue { position: static; } }
 
 @media (max-width: 900px) {
   .main { grid-template-columns: minmax(0, 1fr); }
@@ -169,7 +196,7 @@ dialog::backdrop { background: rgba(8, 12, 22, .6); }
 
   <header style="display:grid;gap:12px">
     <h1>Learn anything from the most-watched videos on YouTube</h1>
-    <p class="lede">Type a topic and get the 10 most popular videos and full courses on it, ranked by views. Save the ones you want to study and tick them off as you go.</p>
+    <p class="lede">Type a topic and get the 10 most popular videos and full courses on it, ranked by views. Watch them right here, keep notes, and pick up where you left off.</p>
   </header>
 
   <form class="search" id="searchForm" role="search">
@@ -218,10 +245,26 @@ dialog::backdrop { background: rgba(8, 12, 22, .6); }
   </form>
 </dialog>
 
-<dialog id="player">
-  <div class="frame" id="frame"></div>
-  <div class="bar"><b id="playTitle"></b><div class="row"><a class="btn small" id="playOpen" target="_blank" rel="noopener">Open on YouTube</a><button class="btn small" type="button" id="playClose">Close</button></div></div>
-</dialog>
+<section id="study" hidden aria-label="Study view">
+  <div class="study">
+    <div class="studybar"><button class="btn" type="button" id="studyBack">← Back to results</button><div class="row"><a class="btn small" id="studyOpen" target="_blank" rel="noopener">Open on YouTube</a></div></div>
+    <div style="min-width:0">
+      <div class="screen"><div id="ytp"></div><div class="blocked" id="blocked" hidden><b style="font-size:18px">This video only plays on YouTube</b><p>Its owner has turned off playing it on other sites. You can watch it on YouTube, or carry on with the next video here.</p><div class="row" style="justify-content:center"><a class="btn primary" id="blockedOpen" target="_blank" rel="noopener">Watch on YouTube</a><button class="btn" type="button" id="blockedNext">Next video</button></div></div></div>
+      <div class="nowinfo">
+        <h2 id="nowTitle"></h2>
+        <div class="channel" id="nowChannel"></div>
+        <div class="stats" id="nowStats"></div>
+        <div class="resume" id="nowResume"></div>
+        <div class="actions"><button class="btn small" type="button" id="nowDone">Mark as finished</button><button class="btn small" type="button" id="nowSave">+ Save to My courses</button></div>
+      </div>
+      <div class="notes"><label for="noteBox">My notes for this video</label><textarea id="noteBox" placeholder="Key ideas, timestamps, questions to look up…"></textarea><small id="noteSaved">Notes save automatically in this browser.</small></div>
+    </div>
+    <aside class="queue" aria-label="Up next">
+      <h3><span id="queueTitle">Up next</span><label><input type="checkbox" id="autoNext"> Autoplay</label></h3>
+      <ol class="qlist" id="qlist"></ol>
+    </aside>
+  </div>
+</section>
 
 <script>
 (() => {
@@ -272,7 +315,7 @@ dialog::backdrop { background: rgba(8, 12, 22, .6); }
   async function fromYouTube(q) {
     const dur = prefs.len === 'course' ? 'long' : prefs.len === 'lesson' ? 'any' : 'any';
     const base = 'https://www.googleapis.com/youtube/v3/';
-    const s = await fetchJson(`${base}search?part=snippet&type=video&maxResults=40&safeSearch=moderate&order=${prefs.sort}&videoDuration=${dur}&q=${encodeURIComponent(queryText(q))}&key=${encodeURIComponent(apiKey)}`);
+    const s = await fetchJson(`${base}search?part=snippet&type=video&videoEmbeddable=true&maxResults=40&safeSearch=moderate&order=${prefs.sort}&videoDuration=${dur}&q=${encodeURIComponent(queryText(q))}&key=${encodeURIComponent(apiKey)}`);
     const ids = (s.items || []).map(i => i.id && i.id.videoId).filter(Boolean);
     if (!ids.length) return [];
     const v = await fetchJson(`${base}videos?part=snippet,statistics,contentDetails&id=${ids.join(',')}&key=${encodeURIComponent(apiKey)}`);
@@ -354,32 +397,123 @@ dialog::backdrop { background: rgba(8, 12, 22, .6); }
       const isSaved = saved.some(s => s.id === v.id), course = v.dur >= 3600 || COURSE_RX.test(v.title);
       return `<li class="item">
         <div class="rank">${i + 1}</div>
-        <button class="thumb" type="button" data-play="${esc(v.id)}" aria-label="Play ${esc(v.title)}"><img src="${esc(thumbUrl(v.id))}" alt="" loading="lazy" width="480" height="270">${v.dur ? `<span class="dur">${clock(v.dur)}</span>` : ''}<span class="play"></span></button>
+        <button class="thumb" type="button" data-play="${esc(v.id)}" aria-label="Play ${esc(v.title)}"><img src="${esc(thumbUrl(v.id))}" alt="" loading="lazy" width="480" height="270">${v.dur ? `<span class="dur">${clock(v.dur)}</span>` : ''}<span class="play"></span>${pct(v.id) > 0.02 ? `<span class="prog"><i style="width:${(pct(v.id) * 100).toFixed(0)}%"></i></span>` : ''}</button>
         <div class="info">
           <h3><a href="${esc(watchUrl(v.id))}" target="_blank" rel="noopener">${esc(v.title)}</a></h3>
           <div class="channel">${esc(v.channel || '')}${v.published ? ' · ' + ago(v.published) : ''}</div>
           <div class="stats"><span><b>${compact(v.views)}</b> views</span>${v.likes != null ? `<span><b>${compact(v.likes)}</b> likes</span>` : ''}${v.dur ? `<span><b>${hours(v.dur)}</b> long</span>` : ''}</div>
           <div class="badges">${course ? '<span class="badge course">Course</span>' : ''}${v.dur && v.dur < 1200 ? '<span class="badge">Quick lesson</span>' : ''}${i === 0 && prefs.sort === 'viewCount' ? '<span class="badge">Most watched</span>' : ''}</div>
-          <div class="actions"><button class="btn small" type="button" data-play="${esc(v.id)}">▶ Watch</button><button class="btn small ${isSaved ? 'saved-on' : ''}" type="button" data-save="${esc(v.id)}" aria-pressed="${isSaved}">${isSaved ? '✓ Saved' : '+ Save to My courses'}</button></div>
+          <div class="actions"><button class="btn small" type="button" data-play="${esc(v.id)}">▶ ${progress[v.id] && progress[v.id].done ? 'Watch again' : pct(v.id) > 0.02 ? 'Resume ' + clock(progress[v.id].t) : 'Watch'}</button><button class="btn small ${isSaved ? 'saved-on' : ''}" type="button" data-save="${esc(v.id)}" aria-pressed="${isSaved}">${isSaved ? '✓ Saved' : '+ Save to My courses'}</button></div>
         </div>
       </li>`;
     }).join('') + '</ol>';
-    $('results').querySelectorAll('[data-play]').forEach(b => b.onclick = () => play(b.dataset.play));
+    $('results').querySelectorAll('[data-play]').forEach(b => b.onclick = () => play(b.dataset.play, current, `Top 10 for “${q}”`));
     $('results').querySelectorAll('[data-save]').forEach(b => b.onclick = () => toggleSave(b.dataset.save, q));
   }
 
-  // ---------- player ----------
-  function play(id) {
-    const v = current.find(x => x.id === id) || saved.find(x => x.id === id);
-    if (embedded || typeof $('player').showModal !== 'function') { window.open(watchUrl(id), '_blank', 'noopener'); return; }
-    $('frame').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?autoplay=1&rel=0" title="${esc(v ? v.title : 'YouTube video')}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
-    $('playTitle').textContent = v ? v.title : ''; $('playOpen').href = watchUrl(id);
-    $('player').showModal();
+  // ---------- study view: watch inside the app ----------
+  let progress = load('cf-progress', {}), notes = load('cf-notes', {});
+  const study = { id: null, queue: [], qname: '', player: null, timer: null, plain: false };
+  const pct = id => { const p = progress[id]; return p && p.dur ? Math.min(1, p.t / p.dur) : 0; };
+  let ytApi = null;
+  function loadYT() {
+    if (ytApi) return ytApi;
+    ytApi = new Promise((res, rej) => {
+      if (window.YT && window.YT.Player) return res(window.YT);
+      const prev = window.onYouTubeIframeAPIReady; window.onYouTubeIframeAPIReady = () => { if (prev) prev(); res(window.YT); };
+      const sc = document.createElement('script'); sc.src = 'https://www.youtube.com/iframe_api'; sc.onerror = () => rej(new Error('api')); document.head.appendChild(sc);
+      setTimeout(() => rej(new Error('timeout')), 9000);
+    });
+    ytApi.catch(() => { ytApi = null; });
+    return ytApi;
   }
-  const closePlayer = () => { $('player').close(); };
-  $('playClose').onclick = closePlayer;
-  $('player').addEventListener('close', () => { $('frame').innerHTML = ''; });
-  $('player').addEventListener('click', e => { if (e.target === $('player')) closePlayer(); });
+  function find(id) { return study.queue.find(x => x.id === id) || current.find(x => x.id === id) || saved.find(x => x.id === id) || { id, title: 'YouTube video' }; }
+  function play(id, queue, qname) {
+    if (embedded) { window.open(watchUrl(id), '_blank', 'noopener'); return; }
+    if (queue) { study.queue = queue.slice(); study.qname = qname || ''; }
+    else if (!study.queue.some(x => x.id === id)) { study.queue = current.length ? current.slice() : saved.slice(); study.qname = current.length ? `Top 10 for “${$('q').value}”` : 'My courses'; }
+    const opening = $('study').hidden;
+    $('study').hidden = false; document.body.style.overflow = 'hidden';
+    if (opening) history.pushState({ study: true }, '');
+    openVideo(id);
+  }
+  function openVideo(id) {
+    saveProgress(); study.id = id; const v = find(id), p = progress[id];
+    $('blocked').hidden = true;
+    $('nowTitle').textContent = v.title || '';
+    $('nowChannel').textContent = [v.channel, v.published ? ago(v.published) : ''].filter(Boolean).join(' · ');
+    $('nowStats').innerHTML = `${v.views != null ? `<span><b>${compact(v.views)}</b> views</span>` : ''}${v.likes != null ? `<span><b>${compact(v.likes)}</b> likes</span>` : ''}${v.dur ? `<span><b>${hours(v.dur)}</b> long</span>` : ''}`;
+    $('studyOpen').href = watchUrl(id); $('blockedOpen').href = watchUrl(id);
+    $('noteBox').value = notes[id] || ''; $('noteSaved').textContent = 'Notes save automatically in this browser.';
+    const start = p && !p.done && p.t > 20 && (!p.dur || p.t < p.dur - 30) ? Math.floor(p.t) : 0;
+    $('nowResume').textContent = start ? `Resuming at ${clock(start)}` : (p && p.done ? 'You finished this one' : '');
+    syncNowButtons(); renderQueue();
+    loadYT().then(YT => {
+      if (study.id !== id) return;
+      if (study.player && study.player.loadVideoById && !study.plain) { study.player.loadVideoById({ videoId: id, startSeconds: start }); return; }
+      $('ytp').outerHTML = '<div id="ytp"></div>'; study.plain = false;
+      study.player = new YT.Player('ytp', {
+        videoId: id, host: 'https://www.youtube-nocookie.com',
+        playerVars: { autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1, start },
+        events: {
+          onStateChange: e => { if (e.data === 0) finishedCurrent(true); },
+          onError: e => { if ([100, 101, 150, 153].includes(e.data)) $('blocked').hidden = false; },
+        },
+      });
+    }).catch(() => {
+      // the player API did not load: fall back to a plain embedded player (no resume tracking)
+      study.plain = true; study.player = null;
+      $('ytp').outerHTML = `<iframe id="ytp" src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?autoplay=1&rel=0${start ? '&start=' + start : ''}" title="${esc(v.title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
+    });
+    clearInterval(study.timer); study.timer = setInterval(saveProgress, 4000);
+  }
+  function saveProgress() {
+    const pl = study.player; if (!study.id || !pl || !pl.getCurrentTime) return;
+    let t = 0, d = 0; try { t = pl.getCurrentTime() || 0; d = pl.getDuration() || 0; } catch (e) { return; }
+    if (!d) return;
+    const prev = progress[study.id] || {}; progress[study.id] = { t, dur: d, done: !!prev.done || t / d > 0.92 };
+    if (!prev.done && progress[study.id].done) markDone(study.id, true);
+    save('cf-progress', progress); renderQueueProgress();
+  }
+  function markDone(id, on) {
+    progress[id] = Object.assign({ t: 0, dur: find(id).dur || 0 }, progress[id], { done: on }); save('cf-progress', progress);
+    const sv = saved.find(x => x.id === id); if (sv) { sv.done = on; save('cf-saved', saved); renderSaved(); }
+    syncNowButtons(); renderQueue();
+  }
+  function finishedCurrent(auto) {
+    markDone(study.id, true);
+    if (auto && $('autoNext').checked) { const i = study.queue.findIndex(x => x.id === study.id), nx = study.queue[i + 1]; if (nx) openVideo(nx.id); }
+  }
+  function syncNowButtons() {
+    const id = study.id, done = !!(progress[id] && progress[id].done), isSaved = saved.some(x => x.id === id);
+    $('nowDone').textContent = done ? '✓ Finished' : 'Mark as finished'; $('nowDone').classList.toggle('saved-on', done);
+    $('nowSave').textContent = isSaved ? '✓ In My courses' : '+ Save to My courses'; $('nowSave').classList.toggle('saved-on', isSaved);
+  }
+  function renderQueue() {
+    $('queueTitle').textContent = study.qname || 'Up next';
+    $('qlist').innerHTML = study.queue.map((v, i) => `<li><button class="qitem" type="button" data-q="${esc(v.id)}" aria-current="${v.id === study.id}"><span class="qthumb"><img src="${esc(thumbUrl(v.id))}" alt="" loading="lazy" width="320" height="180">${v.dur ? `<span class="dur">${clock(v.dur)}</span>` : ''}<span class="prog"><i style="width:${(pct(v.id) * 100).toFixed(0)}%"></i></span></span><span class="qtext">${i + 1}. ${esc(v.title)}<small>${esc(v.channel || '')}${progress[v.id] && progress[v.id].done ? ' · <span class="tick">✓ finished</span>' : pct(v.id) > 0.02 ? ` · ${Math.round(pct(v.id) * 100)}% watched` : ''}</small></span></button></li>`).join('');
+    $('qlist').querySelectorAll('[data-q]').forEach(b => b.onclick = () => openVideo(b.dataset.q));
+  }
+  function renderQueueProgress() { $('qlist').querySelectorAll('[data-q]').forEach(b => { const bar = b.querySelector('.prog i'); if (bar) bar.style.width = (pct(b.dataset.q) * 100).toFixed(0) + '%'; }); }
+  function closeStudy(fromHistory) {
+    if ($('study').hidden) return;
+    saveProgress(); clearInterval(study.timer);
+    try { if (study.player && study.player.stopVideo) study.player.stopVideo(); } catch (e) {}
+    if (study.plain) { $('ytp').outerHTML = '<div id="ytp"></div>'; study.plain = false; }
+    $('study').hidden = true; document.body.style.overflow = ''; study.id = null;
+    if (!fromHistory && history.state && history.state.study) history.back();
+    if (current.length) renderResults($('q').value); renderSaved();
+  }
+  $('studyBack').onclick = () => closeStudy(false);
+  addEventListener('popstate', () => closeStudy(true));
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !$('study').hidden && document.activeElement !== $('noteBox')) closeStudy(false); });
+  addEventListener('pagehide', saveProgress);
+  $('nowDone').onclick = () => markDone(study.id, !(progress[study.id] && progress[study.id].done));
+  $('nowSave').onclick = () => { const id = study.id, v = find(id); if (!saved.some(x => x.id === id)) { saved.unshift({ id, title: v.title, channel: v.channel, dur: v.dur, topic: $('q').value, done: !!(progress[id] && progress[id].done) }); } else saved = saved.filter(x => x.id !== id); save('cf-saved', saved); renderSaved(); syncNowButtons(); };
+  $('blockedNext').onclick = () => { const i = study.queue.findIndex(x => x.id === study.id), nx = study.queue[i + 1]; if (nx) openVideo(nx.id); };
+  let noteT = 0;
+  $('noteBox').addEventListener('input', () => { clearTimeout(noteT); noteT = setTimeout(() => { const v = $('noteBox').value; if (v.trim()) notes[study.id] = v; else delete notes[study.id]; save('cf-notes', notes); $('noteSaved').textContent = 'Saved'; }, 400); });
+  $('autoNext').checked = load('cf-autonext', true); $('autoNext').onchange = () => save('cf-autonext', $('autoNext').checked);
 
   // ---------- my courses ----------
   function toggleSave(id, topic) {
@@ -394,9 +528,9 @@ dialog::backdrop { background: rgba(8, 12, 22, .6); }
     $('savedMeter').style.width = saved.length ? (done.length / saved.length * 100) + '%' : '0';
     $('saved').innerHTML = saved.length ? saved.map(s => `<li class="${s.done ? 'done' : ''}"><input type="checkbox" id="done-${esc(s.id)}" data-done="${esc(s.id)}" ${s.done ? 'checked' : ''} aria-label="Finished ${esc(s.title)}"><div><a href="${esc(watchUrl(s.id))}" target="_blank" rel="noopener" data-play-saved="${esc(s.id)}">${esc(s.title)}</a><small>${esc(s.topic || '')}${s.dur ? ' · ' + clock(s.dur) : ''}</small></div><button class="x" type="button" data-del="${esc(s.id)}" aria-label="Remove ${esc(s.title)}">×</button></li>`).join('')
       : '<li><p class="empty">Press “Save to My courses” on a video to build your study list. It stays in this browser.</p></li>';
-    $('saved').querySelectorAll('[data-done]').forEach(c => c.onchange = () => { const s = saved.find(x => x.id === c.dataset.done); if (s) { s.done = c.checked; save('cf-saved', saved); renderSaved(); } });
+    $('saved').querySelectorAll('[data-done]').forEach(c => c.onchange = () => { const s = saved.find(x => x.id === c.dataset.done); if (s) { s.done = c.checked; save('cf-saved', saved); progress[s.id] = Object.assign({ t: 0, dur: s.dur || 0 }, progress[s.id], { done: c.checked }); save('cf-progress', progress); renderSaved(); } });
     $('saved').querySelectorAll('[data-del]').forEach(b => b.onclick = () => { saved = saved.filter(x => x.id !== b.dataset.del); save('cf-saved', saved); renderSaved(); if (current.length) renderResults($('q').value); });
-    $('saved').querySelectorAll('[data-play-saved]').forEach(a => a.onclick = e => { if (!embedded) { e.preventDefault(); play(a.dataset.playSaved); } });
+    $('saved').querySelectorAll('[data-play-saved]').forEach(a => a.onclick = e => { if (!embedded) { e.preventDefault(); play(a.dataset.playSaved, saved, 'My courses'); } });
   }
 
   // ---------- filters + topics ----------
@@ -431,7 +565,7 @@ dialog::backdrop { background: rgba(8, 12, 22, .6); }
 
   syncFilters(); renderTopics(); renderSaved();
   run(recent[0] || 'Python');
-  window.__cf = { run, prefs, get current() { return current; } };
+  window.__cf = { run, prefs, play, get current() { return current; }, get progress() { return progress; }, study };
 })();
 </script>
 </body>
