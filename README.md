@@ -7,6 +7,7 @@ The home page (`index.html`) is the Game Room: it links to the calculator and th
 - `skyfall/` holds Skyfall Defense
 - `muse/` holds Runway Muse
 - `race/` holds Apex Rush
+- `course/` holds Course Finder
 
 ## Calculator (calculator/)
 The calculator consists of three files: index.html, style.css and script.js
@@ -96,3 +97,10 @@ A 3D street racing game built with three.js. Six cars start on the grid, the fiv
 - **Rivals:** Easy, Pro or Legend. AI drivers take the inside of corners, brake for the bends, overtake slower cars and use nitro on the straights.
 - **Feel:** a chase camera that swings with your slides, a far chase camera and a bumper camera; speed lines, camera shake, tyre smoke, sparks and nitro flames; a live engine sound that changes gear (an electric whine for the Volt), tyre squeal and wind noise.
 - **Controls:** arrows or WASD, Space drift, Shift nitro, C camera, R back on track, P pause. Gamepads work. On phones choose your steering: buttons, tilt (turn the phone like a wheel, tap the steering bar to recentre, with an invert option) or drag (put a thumb anywhere on the left half and slide). Optional auto-gas; landscape works best.
+
+## Course Finder (course/)
+Search a topic and browse the 10 most popular YouTube videos on it.
+
+- **Ranking:** most viewed (default), most relevant, newest or top rated. Filter to full courses (1 hour or longer) or short lessons (under 20 minutes), and optionally search only courses and tutorials.
+- **Each result** shows its rank, thumbnail, title, channel, views, likes (with a key), length and age, plus Course or Quick lesson badges. Watch plays the video in a pop-up player; Save adds it to **My courses**, a study list with tick boxes, total hours and progress, kept in your browser.
+- **Where the data comes from:** connect your own free YouTube Data API v3 key (the YouTube key link explains the three steps) for exact data straight from YouTube. The key is stored only in your browser and sent only to Google. Without a key the app asks public YouTube mirrors (Invidious and Piped), which can be slow or offline. If neither answers, it offers a button that opens YouTube's own results sorted by view count.

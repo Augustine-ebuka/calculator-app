@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Course Finder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Search any topic and browse the 10 most popular YouTube videos and courses on it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: a search "card catalogue" — one big query line, a filter strip, then a ranked shelf of 10 results
+   with a saved-courses rail beside it (stacked under it on phones). */
+:root {
+  --bg: #f3f5f8;          /* cool library paper */
+  --surface: #ffffff;
+  --ink: #15203a;         /* navy ink */
+  --muted: #5b6680;
+  --line: #dde2ea;
+  --accent: #e5322d;      /* play-button red, used sparingly */
+  --accent-ink: #ffffff;
+  --mark: #2f6fed;        /* links, focus */
+  --good: #1f8a4c;
+  --shadow: 0 1px 2px rgba(21, 32, 58, .06), 0 6px 20px rgba(21, 32, 58, .06);
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0f1422; --surface: #171e30; --ink: #e8ecf5; --muted: #9aa5bd; --line: #283149; --accent: #ff4d47; --mark: #7aa7ff; --good: #4cc483; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25); color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #0f1422; --surface: #171e30; --ink: #e8ecf5; --muted: #9aa5bd; --line: #283149; --accent: #ff4d47; --mark: #7aa7ff; --good: #4cc483; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25); color-scheme: dark; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.5 var(--body); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+button, input, select { font: inherit; color: inherit; }
+a { color: var(--mark); }
+:focus-visible { outline: 3px solid var(--mark); outline-offset: 2px; border-radius: 6px; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 28px 56px; display: grid; gap: 22px; }
+
+/* header + search */
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 800; font-size: 22px; letter-spacing: -.01em; }
+.logo { width: 34px; height: 24px; border-radius: 7px; background: var(--accent); display: grid; place-items: center; }
+.logo::after { content: ""; border-left: 9px solid var(--accent-ink); border-top: 6px solid transparent; border-bottom: 6px solid transparent; margin-left: 2px; }
+.toplinks { display: flex; gap: 14px; align-items: center; font-size: 14px; }
+.toplinks a, .linkbtn { color: var(--muted); text-decoration: none; font-weight: 600; background: none; border: 0; padding: 0; cursor: pointer; }
+.toplinks a:hover, .linkbtn:hover { color: var(--ink); }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(32px, 5.4vw, 56px); line-height: 1; letter-spacing: -.02em; margin: 0; text-wrap: balance; max-width: 18ch; }
+.lede { margin: 0; color: var(--muted); max-width: 60ch; }
+.search { display: flex; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 8px; box-shadow: var(--shadow); }
+.search input { flex: 1; min-width: 0; border: 0; background: transparent; font-size: 19px; padding: 10px 12px; }
+.search input:focus { outline: none; }
+.search:focus-within { border-color: var(--mark); }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 10px 16px; font-weight: 600; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; justify-content: center; text-decoration: none; color: var(--ink); white-space: nowrap; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.small { padding: 6px 11px; font-size: 14px; border-radius: 8px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.filters { display: flex; gap: 10px 22px; flex-wrap: wrap; align-items: center; }
+.group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.group > span { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-right: 2px; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; font-size: 14px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chip:hover { border-color: var(--muted); }
+.topics { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.topics > span { font-size: 14px; color: var(--muted); }
+.topic { border: 0; background: none; color: var(--mark); font-weight: 600; cursor: pointer; padding: 2px 0; font-size: 14px; }
+.topic:hover { text-decoration: underline; }
+
+/* results + saved rail */
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+.status { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.status h2 { font-family: var(--display); font-size: 24px; font-weight: 800; margin: 0; letter-spacing: -.01em; min-width: 0; overflow-wrap: anywhere; }
+.source { font-size: 13px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+.source i { width: 8px; height: 8px; border-radius: 50%; background: var(--good); display: inline-block; }
+.source.warn i { background: #d49a00; }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.item { display: grid; grid-template-columns: 44px 240px minmax(0, 1fr); gap: 16px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+.rank { font-family: var(--display); font-weight: 800; font-size: 34px; line-height: 1; color: var(--muted); text-align: right; padding-top: 4px; font-variant-numeric: tabular-nums; }
+.item:first-child .rank { color: var(--accent); }
+.thumb { position: relative; display: block; width: 100%; max-width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: var(--line); border: 0; padding: 0; cursor: pointer; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb .dur { position: absolute; right: 6px; bottom: 6px; background: rgba(10, 14, 24, .86); color: #fff; font: 500 12px var(--mono); padding: 2px 6px; border-radius: 5px; }
+.thumb .play { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; transition: opacity .15s; background: rgba(10,14,24,.25); }
+.thumb .play::after { content: ""; width: 0; height: 0; border-left: 20px solid #fff; border-top: 13px solid transparent; border-bottom: 13px solid transparent; filter: drop-shadow(0 2px 6px rgba(0,0,0,.4)); }
+.thumb:hover .play, .thumb:focus-visible .play { opacity: 1; }
+.info { display: grid; gap: 6px; min-width: 0; }
+.info h3 { margin: 0; font-size: 17px; line-height: 1.35; font-weight: 600; overflow-wrap: anywhere; }
+.info h3 a { color: inherit; text-decoration: none; }
+.info h3 a:hover { text-decoration: underline; }
+.channel { font-size: 14px; color: var(--muted); }
+.stats { display: flex; flex-wrap: wrap; gap: 4px 14px; font: 500 13px var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.stats span { color: var(--muted); }
+.stats b { font-weight: 500; color: var(--ink); }
+.badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.badge { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--mark) 14%, transparent); color: var(--mark); }
+.badge.course { background: color-mix(in srgb, var(--good) 16%, transparent); color: var(--good); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+.saved-on { color: var(--good); border-color: color-mix(in srgb, var(--good) 50%, var(--line)); }
+
+.rail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 12px; }
+.rail h2 { font-family: var(--display); font-size: 20px; font-weight: 800; margin: 0; }
+.summary { font: 500 13px var(--mono); color: var(--muted); }
+.meter { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--good); width: 0; transition: width .3s; }
+.saved { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; max-height: 60vh; overflow: auto; }
+.saved li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: start; font-size: 14px; }
+.saved input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--good); }
+.saved a { color: var(--ink); text-decoration: none; line-height: 1.35; overflow-wrap: anywhere; }
+.saved a:hover { text-decoration: underline; }
+.saved .done a { color: var(--muted); text-decoration: line-through; }
+.saved small { display: block; color: var(--muted); font: 500 12px var(--mono); }
+.x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; padding: 0 2px; }
+.x:hover { color: var(--accent); }
+.empty { color: var(--muted); font-size: 14px; margin: 0; }
+
+.note { background: var(--surface); border: 1px dashed var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 10px; }
+.note h3 { margin: 0; font-family: var(--display); font-size: 20px; }
+.note p { margin: 0; color: var(--muted); max-width: 70ch; }
+.skeleton .thumb, .skeleton .line { background: linear-gradient(90deg, var(--line), color-mix(in srgb, var(--line) 50%, var(--surface)), var(--line)); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
+.skeleton .line { height: 14px; border-radius: 6px; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* settings + player dialogs */
+dialog { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); padding: 0; width: min(560px, calc(100vw - 32px)); box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+dialog::backdrop { background: rgba(8, 12, 22, .6); }
+.dlg { padding: 20px; display: grid; gap: 14px; }
+.dlg h2 { margin: 0; font-family: var(--display); font-size: 22px; }
+.dlg ol { margin: 0; padding-left: 20px; color: var(--muted); display: grid; gap: 4px; }
+.field { display: grid; gap: 6px; }
+.field label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.field input { border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 10px 12px; font: 500 14px var(--mono); }
+.row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.msg { font-size: 14px; margin: 0; }
+.msg.err { color: var(--accent); }
+.msg.ok { color: var(--good); }
+#player { width: min(980px, calc(100vw - 24px)); }
+#player .frame { aspect-ratio: 16 / 9; width: 100%; max-width: 100%; background: #000; }
+#player iframe { width: 100%; height: 100%; border: 0; display: block; }
+#player .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; flex-wrap: wrap; }
+#player .bar b { min-width: 0; overflow-wrap: anywhere; }
+
+@media (max-width: 900px) {
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .rail { position: static; }
+}
+@media (max-width: 620px) {
+  .item { grid-template-columns: 30px minmax(0, 1fr); gap: 10px 12px; padding: 12px; }
+  .rank { font-size: 24px; grid-row: span 2; }
+  .thumb { grid-column: 2; }
+  .info { grid-column: 2; }
+  .search { flex-wrap: wrap; }
+  .search input { flex-basis: 100%; }
+  .search .btn { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .skeleton .thumb, .skeleton .line { animation: none; } .thumb .play, .meter i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><span class="logo" aria-hidden="true"></span>Course Finder</div>
+    <div class="toplinks"><a href="../" id="homeLink">← Game Room</a><button class="linkbtn" id="keyBtn" type="button">YouTube key</button></div>
+  </div>
+
+  <header style="display:grid;gap:12px">
+    <h1>Learn anything from the most-watched videos on YouTube</h1>
+    <p class="lede">Type a topic and get the 10 most popular videos and full courses on it, ranked by views. Save the ones you want to study and tick them off as you go.</p>
+  </header>
+
+  <form class="search" id="searchForm" role="search">
+    <input id="q" type="search" placeholder="Python, guitar, Excel, calculus…" aria-label="Topic to learn" autocomplete="off" enterkeyhint="search">
+    <button class="btn primary" type="submit">Find top 10</button>
+  </form>
+
+  <div class="filters">
+    <div class="group" id="sortGroup"><span>Rank by</span>
+      <button class="chip" type="button" data-sort="viewCount">Most viewed</button><button class="chip" type="button" data-sort="relevance">Most relevant</button><button class="chip" type="button" data-sort="date">Newest</button><button class="chip" type="button" data-sort="rating">Top rated</button>
+    </div>
+    <div class="group" id="lenGroup"><span>Length</span>
+      <button class="chip" type="button" data-len="any">Any</button><button class="chip" type="button" data-len="course">Full courses (1h+)</button><button class="chip" type="button" data-len="lesson">Lessons (under 20 min)</button>
+    </div>
+    <div class="group"><span>Only</span><button class="chip" type="button" id="learnOnly">Courses &amp; tutorials</button></div>
+  </div>
+
+  <div class="topics" id="topics"><span>Try:</span></div>
+
+  <div class="main">
+    <section aria-live="polite">
+      <div class="status"><h2 id="resultTitle">Top 10</h2><span class="source" id="source"></span></div>
+      <div id="results"></div>
+    </section>
+    <aside class="rail" aria-label="My courses">
+      <h2>My courses</h2>
+      <div class="summary" id="savedSummary">Nothing saved yet</div>
+      <div class="meter" aria-hidden="true"><i id="savedMeter"></i></div>
+      <ul class="saved" id="saved"></ul>
+    </aside>
+  </div>
+</div>
+
+<dialog id="keyDlg">
+  <form class="dlg" method="dialog" id="keyForm">
+    <h2>Connect your YouTube key</h2>
+    <p class="msg" style="color:var(--muted)">With your own free key, results come straight from YouTube with exact views, likes and length. Without one, Course Finder uses public YouTube mirrors, which are sometimes slow or down.</p>
+    <ol>
+      <li>Open <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">YouTube Data API v3</a> in Google Cloud and press <b>Enable</b>.</li>
+      <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Credentials</a> → <b>Create credentials</b> → <b>API key</b>.</li>
+      <li>Paste the key below. It stays in this browser and is only sent to YouTube.</li>
+    </ol>
+    <div class="field"><label for="keyIn">API key</label><input id="keyIn" autocomplete="off" spellcheck="false" placeholder="AIza…"></div>
+    <p class="msg" id="keyMsg"></p>
+    <div class="row"><button class="btn" type="button" id="keyClear">Remove key</button><button class="btn" type="button" id="keyCancel">Close</button><button class="btn primary" type="button" id="keySave">Save and test</button></div>
+  </form>
+</dialog>
+
+<dialog id="player">
+  <div class="frame" id="frame"></div>
+  <div class="bar"><b id="playTitle"></b><div class="row"><a class="btn small" id="playOpen" target="_blank" rel="noopener">Open on YouTube</a><button class="btn small" type="button" id="playClose">Close</button></div></div>
+</dialog>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const load = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
+  const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  // inside an embedded viewer (an iframe) YouTube players and outside data are often blocked: link out instead
+  const embedded = (() => { try { return window.top !== window; } catch (e) { return true; } })();
+
+  const prefs = Object.assign({ sort: 'viewCount', len: 'any', learn: true }, load('cf-prefs', {}));
+  let apiKey = load('cf-key', '');
+  let saved = load('cf-saved', []);
+  let recent = load('cf-recent', []);
+  let current = [];
+  const TOPICS = ['Python', 'Excel', 'Machine learning', 'Guitar', 'Photography', 'Spanish', 'Calculus', 'Web design', 'Public speaking', 'Personal finance'];
+
+  // ---------- formatting ----------
+  const compact = n => n == null ? '—' : n >= 1e9 ? (n / 1e9).toFixed(1).replace(/\.0$/, '') + 'B' : n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'K' : String(n);
+  const clock = s => { if (!s && s !== 0) return ''; s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`; };
+  const hours = s => { const h = Math.floor(s / 3600), m = Math.round(s % 3600 / 60); return h ? `${h}h ${m}m` : `${m}m`; };
+  const ago = d => { if (!d) return ''; const days = (Date.now() - d) / 864e5; if (days < 1) return 'today'; if (days < 30) return `${Math.floor(days)} days ago`; if (days < 365) return `${Math.floor(days / 30)} months ago`; const y = Math.floor(days / 365); return `${y} year${y > 1 ? 's' : ''} ago`; };
+  const isoDur = s => { const m = /P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(s || ''); return m ? (+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60 + (+m[4] || 0) : 0; };
+  const thumbUrl = id => `https://i.ytimg.com/vi/${encodeURIComponent(id)}/hqdefault.jpg`;
+  const watchUrl = id => `https://www.youtube.com/watch?v=${encodeURIComponent(id)}`;
+  const ytSearchUrl = (q, sort) => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}${{ viewCount: '&sp=CAM%253D', date: '&sp=CAI%253D', rating: '&sp=CAE%253D' }[sort] || ''}`;
+  const COURSE_RX = /\b(full course|course|tutorial|crash course|bootcamp|masterclass|for beginners|complete guide|lecture|lesson|class)\b/i;
+
+  // ---------- data sources ----------
+  const queryText = q => prefs.learn ? `${q} course tutorial` : q;
+  function lengthOk(v) { if (prefs.len === 'course') return v.dur >= 3600; if (prefs.len === 'lesson') return v.dur > 0 && v.dur < 1200; return true; }
+  function rankAndTrim(list) {
+    let out = list.filter(v => v.id && lengthOk(v));
+    if (prefs.sort === 'viewCount') out.sort((a, b) => (b.views || 0) - (a.views || 0));
+    if (prefs.sort === 'date') out.sort((a, b) => (b.published || 0) - (a.published || 0));
+    if (prefs.sort === 'rating') out.sort((a, b) => ((b.likes || 0) / Math.max(1, b.views || 1)) - ((a.likes || 0) / Math.max(1, a.views || 1)));
+    const seen = new Set(); out = out.filter(v => !seen.has(v.id) && seen.add(v.id));
+    return out.slice(0, 10);
+  }
+  async function fetchJson(url, ms = 8000, signal) {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms);
+    if (signal) signal.addEventListener('abort', () => ctl.abort());
+    try { const r = await fetch(url, { signal: ctl.signal }); const j = await r.json().catch(() => null); if (!r.ok) { const e = new Error('http ' + r.status); e.status = r.status; e.body = j; throw e; } return j; }
+    finally { clearTimeout(t); }
+  }
+  // official YouTube Data API v3 (needs the viewer's own key)
+  async function fromYouTube(q) {
+    const dur = prefs.len === 'course' ? 'long' : prefs.len === 'lesson' ? 'any' : 'any';
+    const base = 'https://www.googleapis.com/youtube/v3/';
+    const s = await fetchJson(`${base}search?part=snippet&type=video&maxResults=40&safeSearch=moderate&order=${prefs.sort}&videoDuration=${dur}&q=${encodeURIComponent(queryText(q))}&key=${encodeURIComponent(apiKey)}`);
+    const ids = (s.items || []).map(i => i.id && i.id.videoId).filter(Boolean);
+    if (!ids.length) return [];
+    const v = await fetchJson(`${base}videos?part=snippet,statistics,contentDetails&id=${ids.join(',')}&key=${encodeURIComponent(apiKey)}`);
+    const order = new Map(ids.map((id, i) => [id, i]));
+    return (v.items || []).sort((a, b) => order.get(a.id) - order.get(b.id)).map(it => ({
+      id: it.id, title: it.snippet.title, channel: it.snippet.channelTitle, channelId: it.snippet.channelId,
+      views: +it.statistics.viewCount || 0, likes: it.statistics.likeCount != null ? +it.statistics.likeCount : null,
+      dur: isoDur(it.contentDetails.duration), published: Date.parse(it.snippet.publishedAt) || null,
+    }));
+  }
+  // public YouTube mirrors: no key, used when the viewer has not connected one
+  const INVIDIOUS = ['https://inv.nadeko.net', 'https://invidious.nerdvpn.de', 'https://yewtu.be', 'https://invidious.privacyredirect.com', 'https://iv.ggtyler.dev', 'https://invidious.protokolla.fi'];
+  const PIPED = ['https://pipedapi.kavin.rocks', 'https://pipedapi.adminforge.de', 'https://api.piped.private.coffee'];
+  async function fromMirrors(q) {
+    const ctl = new AbortController(), qt = encodeURIComponent(queryText(q));
+    const sortBy = { viewCount: 'view_count', date: 'upload_date', rating: 'rating', relevance: 'relevance' }[prefs.sort];
+    const dur = prefs.len === 'course' ? '&duration=long' : prefs.len === 'lesson' ? '&duration=short' : '';
+    const tries = [
+      ...INVIDIOUS.map(h => fetchJson(`${h}/api/v1/search?q=${qt}&type=video&sort_by=${sortBy}${dur}`, 9000, ctl.signal).then(list => {
+        const vids = (Array.isArray(list) ? list : []).filter(x => x.type === 'video' && x.videoId);
+        if (!vids.length) throw new Error('empty');
+        return { via: 'Invidious', list: vids.map(x => ({ id: x.videoId, title: x.title, channel: x.author, channelId: x.authorId, views: +x.viewCount || 0, likes: null, dur: +x.lengthSeconds || 0, published: x.published ? x.published * 1000 : null })) };
+      })),
+      ...PIPED.map(h => fetchJson(`${h}/search?q=${qt}&filter=videos`, 9000, ctl.signal).then(res => {
+        const vids = ((res && res.items) || []).filter(x => x.url && /watch\?v=/.test(x.url));
+        if (!vids.length) throw new Error('empty');
+        return { via: 'Piped', list: vids.map(x => ({ id: (x.url.split('v=')[1] || '').split('&')[0], title: x.title, channel: x.uploaderName, views: +x.views || 0, likes: null, dur: +x.duration || 0, published: x.uploaded > 0 ? x.uploaded : null })) };
+      })),
+    ];
+    try { const r = await Promise.any(tries); ctl.abort(); return r; }
+    catch (e) { throw new Error('mirrors'); }
+  }
+
+  // ---------- search flow ----------
+  let searchId = 0;
+  async function run(q) {
+    q = String(q || '').trim(); if (!q) { $('q').focus(); return; }
+    $('q').value = q; const my = ++searchId;
+    recent = [q, ...recent.filter(r => r.toLowerCase() !== q.toLowerCase())].slice(0, 6); save('cf-recent', recent); renderTopics();
+    $('resultTitle').textContent = `Top 10 for “${q}”`;
+    setSource('Searching…', true);
+    $('results').innerHTML = skeleton();
+    let list = [], via = '';
+    try {
+      if (apiKey) { list = await fromYouTube(q); via = 'YouTube'; }
+      else { const r = await fromMirrors(q); list = r.list; via = r.via; }
+    } catch (e) {
+      if (my !== searchId) return;
+      return showProblem(q, e);
+    }
+    if (my !== searchId) return;
+    current = rankAndTrim(list);
+    if (!current.length) { setSource('No matches', true); $('results').innerHTML = note('No videos matched those filters', `Try “Any” length, turn off “Courses &amp; tutorials”, or a broader topic.`, q); return; }
+    setSource(via === 'YouTube' ? 'Live from YouTube' : `Live via ${via}, a public YouTube mirror`, via !== 'YouTube');
+    renderResults(q);
+  }
+  function setSource(text, warn) { const el = $('source'); el.className = 'source' + (warn ? ' warn' : ''); el.innerHTML = `<i></i>${esc(text)}`; }
+  function skeleton() { return '<ol class="list skeleton" aria-hidden="true">' + Array.from({ length: 4 }, (_, i) => `<li class="item"><div class="rank">${i + 1}</div><div class="thumb"></div><div class="info"><div class="line" style="width:80%"></div><div class="line" style="width:40%"></div><div class="line" style="width:55%"></div></div></li>`).join('') + '</ol>'; }
+  function note(title, body, q, extra = '') { return `<div class="note"><h3>${title}</h3><p>${body}</p><div class="row" style="justify-content:flex-start">${extra}<a class="btn primary" href="${esc(ytSearchUrl(q, prefs.sort))}" target="_blank" rel="noopener">Open the top results on YouTube</a></div></div>`; }
+  function showProblem(q, e) {
+    setSource(apiKey ? 'YouTube refused the search' : 'Could not reach YouTube data', true);
+    let title, body, extra = '';
+    if (apiKey && e.status) {
+      const reason = (e.body && e.body.error && e.body.error.errors && e.body.error.errors[0] && e.body.error.errors[0].reason) || '';
+      if (reason === 'quotaExceeded' || reason === 'dailyLimitExceeded') { title = 'Your YouTube key has used today’s searches'; body = 'A free key allows about 100 searches a day. It resets at midnight Pacific time.'; }
+      else if (e.status === 400 || reason === 'keyInvalid' || reason === 'badRequest') { title = 'That YouTube key doesn’t work'; body = 'Check you pasted the whole key and that YouTube Data API v3 is enabled for it.'; extra = '<button class="btn" type="button" data-open-key>Fix key</button>'; }
+      else if (e.status === 403) { title = 'YouTube blocked this key'; body = 'Make sure YouTube Data API v3 is enabled and the key has no website restriction that excludes this page.'; extra = '<button class="btn" type="button" data-open-key>Fix key</button>'; }
+      else { title = 'YouTube didn’t answer'; body = 'Try again in a moment.'; }
+    } else if (embedded) {
+      title = 'Live search needs the full page'; body = 'This preview can’t load data from YouTube. Open Course Finder on its website, or jump straight to YouTube’s most-viewed results for this topic.';
+    } else {
+      title = 'The public YouTube mirrors are busy'; body = 'Without a key, Course Finder borrows public mirrors and right now none answered. Connect your own free YouTube key for reliable results, or open the most-viewed results on YouTube.'; extra = '<button class="btn" type="button" data-open-key>Connect a YouTube key</button>';
+    }
+    $('results').innerHTML = note(title, body, q, extra);
+    $('results').querySelectorAll('[data-open-key]').forEach(b => b.onclick = openKey);
+  }
+  function renderResults(q) {
+    $('results').innerHTML = '<ol class="list">' + current.map((v, i) => {
+      const isSaved = saved.some(s => s.id === v.id), course = v.dur >= 3600 || COURSE_RX.test(v.title);
+      return `<li class="item">
+        <div class="rank">${i + 1}</div>
+        <button class="thumb" type="button" data-play="${esc(v.id)}" aria-label="Play ${esc(v.title)}"><img src="${esc(thumbUrl(v.id))}" alt="" loading="lazy" width="480" height="270">${v.dur ? `<span class="dur">${clock(v.dur)}</span>` : ''}<span class="play"></span></button>
+        <div class="info">
+          <h3><a href="${esc(watchUrl(v.id))}" target="_blank" rel="noopener">${esc(v.title)}</a></h3>
+          <div class="channel">${esc(v.channel || '')}${v.published ? ' · ' + ago(v.published) : ''}</div>
+          <div class="stats"><span><b>${compact(v.views)}</b> views</span>${v.likes != null ? `<span><b>${compact(v.likes)}</b> likes</span>` : ''}${v.dur ? `<span><b>${hours(v.dur)}</b> long</span>` : ''}</div>
+          <div class="badges">${course ? '<span class="badge course">Course</span>' : ''}${v.dur && v.dur < 1200 ? '<span class="badge">Quick lesson</span>' : ''}${i === 0 && prefs.sort === 'viewCount' ? '<span class="badge">Most watched</span>' : ''}</div>
+          <div class="actions"><button class="btn small" type="button" data-play="${esc(v.id)}">▶ Watch</button><button class="btn small ${isSaved ? 'saved-on' : ''}" type="button" data-save="${esc(v.id)}" aria-pressed="${isSaved}">${isSaved ? '✓ Saved' : '+ Save to My courses'}</button></div>
+        </div>
+      </li>`;
+    }).join('') + '</ol>';
+    $('results').querySelectorAll('[data-play]').forEach(b => b.onclick = () => play(b.dataset.play));
+    $('results').querySelectorAll('[data-save]').forEach(b => b.onclick = () => toggleSave(b.dataset.save, q));
+  }
+
+  // ---------- player ----------
+  function play(id) {
+    const v = current.find(x => x.id === id) || saved.find(x => x.id === id);
+    if (embedded || typeof $('player').showModal !== 'function') { window.open(watchUrl(id), '_blank', 'noopener'); return; }
+    $('frame').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?autoplay=1&rel=0" title="${esc(v ? v.title : 'YouTube video')}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
+    $('playTitle').textContent = v ? v.title : ''; $('playOpen').href = watchUrl(id);
+    $('player').showModal();
+  }
+  const closePlayer = () => { $('player').close(); };
+  $('playClose').onclick = closePlayer;
+  $('player').addEventListener('close', () => { $('frame').innerHTML = ''; });
+  $('player').addEventListener('click', e => { if (e.target === $('player')) closePlayer(); });
+
+  // ---------- my courses ----------
+  function toggleSave(id, topic) {
+    const i = saved.findIndex(s => s.id === id);
+    if (i >= 0) saved.splice(i, 1);
+    else { const v = current.find(x => x.id === id); if (v) saved.unshift({ id: v.id, title: v.title, channel: v.channel, dur: v.dur, topic, done: false }); }
+    save('cf-saved', saved); renderSaved(); if (current.length) renderResults(topic || $('q').value);
+  }
+  function renderSaved() {
+    const total = saved.reduce((a, s) => a + (s.dur || 0), 0), done = saved.filter(s => s.done);
+    $('savedSummary').textContent = saved.length ? `${saved.length} saved · ${hours(total)} · ${done.length} finished` : 'Nothing saved yet';
+    $('savedMeter').style.width = saved.length ? (done.length / saved.length * 100) + '%' : '0';
+    $('saved').innerHTML = saved.length ? saved.map(s => `<li class="${s.done ? 'done' : ''}"><input type="checkbox" id="done-${esc(s.id)}" data-done="${esc(s.id)}" ${s.done ? 'checked' : ''} aria-label="Finished ${esc(s.title)}"><div><a href="${esc(watchUrl(s.id))}" target="_blank" rel="noopener" data-play-saved="${esc(s.id)}">${esc(s.title)}</a><small>${esc(s.topic || '')}${s.dur ? ' · ' + clock(s.dur) : ''}</small></div><button class="x" type="button" data-del="${esc(s.id)}" aria-label="Remove ${esc(s.title)}">×</button></li>`).join('')
+      : '<li><p class="empty">Press “Save to My courses” on a video to build your study list. It stays in this browser.</p></li>';
+    $('saved').querySelectorAll('[data-done]').forEach(c => c.onchange = () => { const s = saved.find(x => x.id === c.dataset.done); if (s) { s.done = c.checked; save('cf-saved', saved); renderSaved(); } });
+    $('saved').querySelectorAll('[data-del]').forEach(b => b.onclick = () => { saved = saved.filter(x => x.id !== b.dataset.del); save('cf-saved', saved); renderSaved(); if (current.length) renderResults($('q').value); });
+    $('saved').querySelectorAll('[data-play-saved]').forEach(a => a.onclick = e => { if (!embedded) { e.preventDefault(); play(a.dataset.playSaved); } });
+  }
+
+  // ---------- filters + topics ----------
+  function syncFilters() {
+    document.querySelectorAll('[data-sort]').forEach(b => b.setAttribute('aria-pressed', b.dataset.sort === prefs.sort));
+    document.querySelectorAll('[data-len]').forEach(b => b.setAttribute('aria-pressed', b.dataset.len === prefs.len));
+    $('learnOnly').setAttribute('aria-pressed', !!prefs.learn);
+    $('keyBtn').textContent = apiKey ? 'YouTube key ✓' : 'Connect YouTube key';
+  }
+  const rerun = () => { save('cf-prefs', prefs); syncFilters(); if ($('q').value.trim()) run($('q').value); };
+  document.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { prefs.sort = b.dataset.sort; rerun(); });
+  document.querySelectorAll('[data-len]').forEach(b => b.onclick = () => { prefs.len = b.dataset.len; rerun(); });
+  $('learnOnly').onclick = () => { prefs.learn = !prefs.learn; rerun(); };
+  function renderTopics() {
+    const list = [...recent, ...TOPICS.filter(t => !recent.some(r => r.toLowerCase() === t.toLowerCase()))].slice(0, 10);
+    $('topics').innerHTML = `<span>${recent.length ? 'Recent and popular:' : 'Try:'}</span>` + list.map(t => `<button class="topic" type="button" data-topic="${esc(t)}">${esc(t)}</button>`).join('<span aria-hidden="true">·</span>');
+    $('topics').querySelectorAll('[data-topic]').forEach(b => b.onclick = () => run(b.dataset.topic));
+  }
+  $('searchForm').addEventListener('submit', e => { e.preventDefault(); run($('q').value); });
+
+  // ---------- API key dialog ----------
+  function openKey() { $('keyIn').value = apiKey; $('keyMsg').textContent = ''; $('keyMsg').className = 'msg'; if ($('keyDlg').showModal) $('keyDlg').showModal(); }
+  $('keyBtn').onclick = openKey;
+  $('keyCancel').onclick = () => $('keyDlg').close();
+  $('keyClear').onclick = () => { apiKey = ''; save('cf-key', ''); syncFilters(); $('keyMsg').className = 'msg ok'; $('keyMsg').textContent = 'Key removed. Searches use the public mirrors.'; };
+  $('keySave').onclick = async () => {
+    const k = $('keyIn').value.trim(); if (!k) { $('keyMsg').className = 'msg err'; $('keyMsg').textContent = 'Paste a key first.'; return; }
+    $('keyMsg').className = 'msg'; $('keyMsg').textContent = 'Testing the key…';
+    try { await fetchJson(`https://www.googleapis.com/youtube/v3/videos?part=id&chart=mostPopular&maxResults=1&key=${encodeURIComponent(k)}`); apiKey = k; save('cf-key', k); syncFilters(); $('keyMsg').className = 'msg ok'; $('keyMsg').textContent = 'Connected. Results now come straight from YouTube.'; if ($('q').value.trim()) run($('q').value); }
+    catch (e) { $('keyMsg').className = 'msg err'; $('keyMsg').textContent = e.status === 400 ? 'YouTube says this key is not valid. Check you copied all of it.' : e.status === 403 ? 'This key cannot use YouTube Data API v3 yet. Enable the API for its project and try again.' : 'Couldn’t reach YouTube to test the key. Check your connection.'; }
+  };
+
+  syncFilters(); renderTopics(); renderSaved();
+  run(recent[0] || 'Python');
+  window.__cf = { run, prefs, get current() { return current; } };
+})();
+</script>
+</body>
+</html>
